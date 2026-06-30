@@ -1,7 +1,7 @@
 {
   "name": "lakshyaved",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,12 +11,13 @@
   },
   "dependencies": {
     "dexie": "^4.3.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.0",
     "lucide-react": "^0.575.0",
     "pdfjs-dist": "^5.4.624",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-router-dom": "^7.13.0",
-    "recharts": "^3.7.0"
+    "react-router-dom": "^7.13.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
@@ -28,8 +29,6 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
-    "html2canvas": "^1.4.1",
-    "jspdf": "^4.2.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.19",
     "vite": "^8.0.0-beta.13",

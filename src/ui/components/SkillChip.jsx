@@ -1,6 +1,6 @@
 import { CheckCircle, AlertTriangle, Plus } from 'lucide-react';
 
-export default function SkillChip({ label, type = 'default', onRemove }) {
+export default function SkillChip({ label, type = 'default' }) {
     const styles = {
         matched: "bg-[#13ec6d]/10 text-[#13ec6d] border-[#13ec6d]/20",
         missing: "bg-[#ef4444]/10 text-[#ef4444] border-[#ef4444]/20",

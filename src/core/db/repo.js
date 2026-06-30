@@ -3,7 +3,9 @@ import db from './db.js';
 const DEFAULT_ID = 'default';
 
 export async function saveProfile({ skills, interests, targetRole }) {
+    const existing = await db.profile.get(DEFAULT_ID);
     return db.profile.put({
+        ...(existing || {}),
         id: DEFAULT_ID,
         skills,
         interests,

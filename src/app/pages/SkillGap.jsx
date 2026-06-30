@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, AlertTriangle, FileText, Download, Upload } from 'lucide-react';
 import SkillChip from '../../ui/components/SkillChip';
@@ -14,6 +14,7 @@ import ReadinessMeter from '../../ui/components/ReadinessMeter';
 import RoadmapPlanner from '../../ui/components/RoadmapPlanner';
 import ExportPdfButton from '../../ui/components/ExportPdfButton';
 import RoleAutocomplete from '../../ui/components/RoleAutocomplete';
+import RecommendationList from '../../ui/components/RecommendationList';
 
 export default function SkillGap() {
     const navigate = useNavigate();
@@ -23,13 +24,7 @@ export default function SkillGap() {
     const [analysis, setAnalysis] = useState(null);
     const [loading, setLoading] = useState(false);
     const [errorStatus, setErrorStatus] = useState('');
-    const [searchQuery, setSearchQuery] = useState('');
-    const [filteredRoles, setFilteredRoles] = useState(rolesDataset);
     const [profileData, setProfileData] = useState({ skills: [], interests: [] });
-
-    useEffect(() => {
-        setFilteredRoles(findRoles(searchQuery));
-    }, [searchQuery]);
 
     useEffect(() => {
         const loader = async () => {
@@ -97,13 +92,33 @@ export default function SkillGap() {
         }
     };
 
-    const readiness = calculateReadiness({
-        targetRole,
-        rolesDataset,
-        profileSkills: profileData?.skills || (analysis?.extractedSkills || []),
-        profileInterests: profileData?.interests || [],
-        resumeRawText: resumeText
-    });
+    const readiness = useMemo(() => {
+        return calculateReadiness({
+            targetRole,
+            rolesDataset,
+            profileSkills: profileData?.skills || (analysis?.extractedSkills || []),
+            profileInterests: profileData?.interests || [],
+            resumeRawText: resumeText
+        });
+    }, [targetRole, rolesDataset, profileData, analysis, resumeText]);
+
+    const resumeSections = useMemo(() => {
+        return resumeText ? detectResumeSections(resumeText) : null;
+    }, [resumeText]);
+
+    const recs = useMemo(() => {
+        if (!analysis || !targetRole) return [];
+        return generateRecommendations({
+            targetRole,
+            rolesDataset,
+            profileSkills: profileData?.skills || [],
+            profileInterests: profileData?.interests || [],
+            resumeSections,
+            matchRate: analysis.matchRate || 0,
+            missingSkills: analysis.missingSkills || [],
+            readinessScore: readiness?.total || 0
+        });
+    }, [analysis, targetRole, rolesDataset, profileData, resumeSections, readiness]);
 
     return (
         <div className="max-w-4xl mx-auto space-y-6">
@@ -265,48 +280,9 @@ export default function SkillGap() {
                     </div>
                 )}
                 {/* Recommendations */}
-                {analysis && targetRole && (() => {
-                    const resumeSections = resumeText ? detectResumeSections(resumeText) : null;
-                    const recs = generateRecommendations({
-                        targetRole,
-                        rolesDataset,
-                        profileSkills: profileData?.skills || [],
-                        profileInterests: profileData?.interests || [],
-                        resumeSections,
-                        matchRate: analysis.matchRate || 0,
-                        missingSkills: analysis.missingSkills || [],
-                        readinessScore: readiness?.total || 0
-                    });
-
-                    if (recs.length === 0) return null;
-
-                    const impactColors = { high: 'text-red-400 bg-red-900/20 border-red-900/30', medium: 'text-amber-400 bg-amber-900/20 border-amber-900/30', low: 'text-[#13ec6d] bg-emerald-900/20 border-emerald-900/30' };
-                    const categoryIcons = { skill: '🎯', resume: '📄', career: '🚀', experience: '💼' };
-
-                    return (
-                        <div className="bg-[#121a2a] rounded-2xl p-6 shadow-lg border border-[#1e293b]">
-                            <h3 className="text-lg font-bold text-white mb-2">Personalized Recommendations</h3>
-                            <p className="text-slate-400 text-xs mb-6">Actionable insights based on your analysis.</p>
-                            <div className="space-y-3">
-                                {recs.map(r => (
-                                    <div key={r.id} className="bg-slate-900/50 rounded-xl p-4 border border-slate-800">
-                                        <div className="flex items-start gap-3">
-                                            <span className="text-lg">{categoryIcons[r.category] || '💡'}</span>
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <h4 className="text-white font-bold text-sm">{r.title}</h4>
-                                                    <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase border ${impactColors[r.impact]}`}>{r.impact}</span>
-                                                </div>
-                                                <p className="text-slate-400 text-xs leading-relaxed mb-1">{r.text}</p>
-                                                <p className="text-slate-300 text-xs font-medium italic">→ {r.actionable}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    );
-                })()}
+                {analysis && targetRole && (
+                    <RecommendationList recs={recs} />
+                )}
             </div>
         </div>
     );

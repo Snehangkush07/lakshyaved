@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Hexagon, ArrowRight, ArrowLeft, CheckCircle, User, Briefcase, GraduationCap, Sparkles } from 'lucide-react';
 import { saveOnboardingProfile } from '../../core/db/repo';
-import { findRoles, findSkills, findInterests } from '../../core/logic/dataStore';
+import { findRoles, findSkills } from '../../core/logic/dataStore';
 import RoleAutocomplete from '../../ui/components/RoleAutocomplete';
 import { getAllRoles } from '../../core/logic/dataStore';
 

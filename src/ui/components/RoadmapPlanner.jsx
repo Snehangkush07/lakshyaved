@@ -4,6 +4,8 @@ import ProgressBar from './ProgressBar';
 import { generateRoadmap } from '../../core/logic/roadmapEngine';
 import { saveRoadmapPlan, getRoadmapPlanByRole, saveRoadmapProgress, getRoadmapProgress, deleteRoadmapPlan } from '../../core/db/repo';
 
+const getNow = () => Date.now();
+
 export default function RoadmapPlanner({ targetRole, targetRoleName, missingSkills = [] }) {
     const [duration, setDuration] = useState(4);
     const [plan, setPlan] = useState(null);
@@ -12,7 +14,7 @@ export default function RoadmapPlanner({ targetRole, targetRoleName, missingSkil
     const [expandedWeeks, setExpandedWeeks] = useState({ 1: true }); // By default week 1 is expanded
 
     // "Today" View configurations
-    const [startDateMs, setStartDateMs] = useState(Date.now());
+    const [startDateMs, setStartDateMs] = useState(() => getNow());
 
     // Load active plan if exists
     useEffect(() => {
@@ -32,12 +34,12 @@ export default function RoadmapPlanner({ targetRole, targetRoleName, missingSkil
                         setProgress({
                             completedTaskIds: existingProgress.completedTaskIds || [],
                             completedAtByTaskId: existingProgress.completedAtByTaskId || {},
-                            startDateMs: existingProgress.startDateMs || Date.now()
+                            startDateMs: existingProgress.startDateMs || getNow()
                         });
                         if (existingProgress.startDateMs) setStartDateMs(existingProgress.startDateMs);
                     } else {
                         setProgress({ completedTaskIds: [], completedAtByTaskId: {} });
-                        setStartDateMs(existingPlan.createdAt || Date.now());
+                        setStartDateMs(existingPlan.createdAt || getNow());
                     }
                 } else {
                     setPlan(null);
@@ -62,13 +64,13 @@ export default function RoadmapPlanner({ targetRole, targetRoleName, missingSkil
 
             setPlan(newPlan);
             setProgress({ completedTaskIds: [], completedAtByTaskId: {} });
-            setStartDateMs(Date.now());
+            setStartDateMs(getNow());
 
             // clear old progress just in case
             await saveRoadmapProgress(newPlan.id, {
                 completedTaskIds: [],
                 completedAtByTaskId: {},
-                startDateMs: Date.now()
+                startDateMs: getNow()
             });
 
             setExpandedWeeks({ 1: true });
@@ -82,9 +84,9 @@ export default function RoadmapPlanner({ targetRole, targetRoleName, missingSkil
         if (!plan) return;
         if (!confirm("Are you sure you want to reset all progress for this plan?")) return;
 
-        const resetState = { completedTaskIds: [], completedAtByTaskId: {}, startDateMs: Date.now() };
+        const resetState = { completedTaskIds: [], completedAtByTaskId: {}, startDateMs: getNow() };
         setProgress(resetState);
-        setStartDateMs(Date.now());
+        setStartDateMs(getNow());
         await saveRoadmapProgress(plan.id, resetState);
     };
 
@@ -108,7 +110,7 @@ export default function RoadmapPlanner({ targetRole, targetRoleName, missingSkil
             delete newDates[taskId];
         } else {
             newIds = [...progress.completedTaskIds, taskId];
-            newDates = { ...progress.completedAtByTaskId, [taskId]: Date.now() };
+            newDates = { ...progress.completedAtByTaskId, [taskId]: getNow() };
         }
 
         const newState = { completedTaskIds: newIds, completedAtByTaskId: newDates, startDateMs };
@@ -124,7 +126,7 @@ export default function RoadmapPlanner({ targetRole, targetRoleName, missingSkil
     // 1 week = 7 * 24 * 60 * 60 * 1000 ms
     const currentWeekIndex = useMemo(() => {
         if (!plan) return 1;
-        const now = Date.now();
+        const now = getNow();
         const diffValid = now - startDateMs;
         if (diffValid < 0) return 1; // future start date?
         const weeksPassed = Math.floor(diffValid / (7 * 24 * 60 * 60 * 1000));

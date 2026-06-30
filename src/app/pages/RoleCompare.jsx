@@ -9,6 +9,30 @@ import { calculateReadiness } from '../../core/logic/readiness';
 import { formatINR } from '../../core/utils/format';
 import RoleAutocomplete from '../../ui/components/RoleAutocomplete';
 
+// Helper functions defined outside the component for purity and React Compiler optimization
+const calcSalaryProjection = (role) => {
+    if (!role) return [];
+    let projection = [];
+    let curr = role.baseSalaryINR || 500000;
+    let growth = role.growthRate || 0.1;
+    for (let i = 0; i <= 5; i++) {
+        projection.push(curr);
+        curr *= (1 + growth);
+    }
+    return projection;
+};
+
+const calcOverlap = (role, profileSkills = []) => {
+    if (!role) return { matched: [], missing: [], score: 0 };
+    const req = role.requiredSkills.map(s => s.toLowerCase());
+    const user = profileSkills.map(s => s.toLowerCase());
+
+    const matched = role.requiredSkills.filter(s => user.includes(s.toLowerCase()));
+    const missing = role.requiredSkills.filter(s => !user.includes(s.toLowerCase()));
+    const score = req.length ? Math.round((matched.length / req.length) * 70) : 0;
+    return { matched, missing, score };
+};
+
 export default function RoleCompare() {
     const rolesDataset = getAllRoles();
 
@@ -17,9 +41,6 @@ export default function RoleCompare() {
 
     const [roleAId, setRoleAId] = useState(rolesDataset[0]?.roleId || '');
     const [roleBId, setRoleBId] = useState(rolesDataset[1]?.roleId || '');
-
-    const [searchA, setSearchA] = useState('');
-    const [searchB, setSearchB] = useState('');
 
     useEffect(() => {
         const loadUser = async () => {
@@ -35,38 +56,11 @@ export default function RoleCompare() {
     const roleA = useMemo(() => rolesDataset.find(r => r.roleId === roleAId) || null, [roleAId, rolesDataset]);
     const roleB = useMemo(() => rolesDataset.find(r => r.roleId === roleBId) || null, [roleBId, rolesDataset]);
 
-    const optionsA = useMemo(() => findRoles(searchA), [searchA]);
-    const optionsB = useMemo(() => findRoles(searchB), [searchB]);
-
-    const calcSalaryProjection = (role) => {
-        if (!role) return [];
-        let projection = [];
-        let curr = role.baseSalaryINR || 500000;
-        let growth = role.growthRate || 0.1;
-        for (let i = 0; i <= 5; i++) {
-            projection.push(curr);
-            curr *= (1 + growth);
-        }
-        return projection;
-    };
-
     const projA = useMemo(() => calcSalaryProjection(roleA), [roleA]);
     const projB = useMemo(() => calcSalaryProjection(roleB), [roleB]);
 
-    // Comparison logic
-    const calcOverlap = (role) => {
-        if (!role) return { matched: [], missing: [], score: 0 };
-        const req = role.requiredSkills.map(s => s.toLowerCase());
-        const user = profile.skills.map(s => s.toLowerCase());
-
-        const matched = role.requiredSkills.filter(s => user.includes(s.toLowerCase()));
-        const missing = role.requiredSkills.filter(s => !user.includes(s.toLowerCase()));
-        const score = req.length ? Math.round((matched.length / req.length) * 70) : 0;
-        return { matched, missing, score };
-    };
-
-    const overlapA = useMemo(() => calcOverlap(roleA), [roleA, profile.skills]);
-    const overlapB = useMemo(() => calcOverlap(roleB), [roleB, profile.skills]);
+    const overlapA = useMemo(() => calcOverlap(roleA, profile.skills), [roleA, profile.skills]);
+    const overlapB = useMemo(() => calcOverlap(roleB, profile.skills), [roleB, profile.skills]);
 
     // Recommendation logic
     const recommendation = useMemo(() => {

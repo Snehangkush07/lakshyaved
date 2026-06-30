@@ -15,17 +15,18 @@ export default function RoleAutocomplete({
     const wrapperRef = useRef(null);
     const inputRef = useRef(null);
 
-    // Initial load: set query to match selected role name
-    useEffect(() => {
+    const [prevSelectedRoleId, setPrevSelectedRoleId] = useState(selectedRoleId);
+
+    // Sync query when selectedRoleId prop changes
+    if (selectedRoleId !== prevSelectedRoleId) {
+        setPrevSelectedRoleId(selectedRoleId);
         if (selectedRoleId) {
             const role = roles.find(r => r.roleId === selectedRoleId);
-            if (role && role.roleName !== query && !isOpen) {
-                setQuery(role.roleName);
-            }
+            if (role) setQuery(role.roleName);
         } else {
             setQuery('');
         }
-    }, [selectedRoleId, roles, isOpen]);
+    }
 
     // Compute active suggestions
     const suggestions = query && isOpen && searchFn ? searchFn(query).slice(0, 12) : [];

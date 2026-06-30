@@ -9,7 +9,7 @@ const PROFICIENCY_SCORE = { beginner: 0.33, intermediate: 0.66, advanced: 1.0 };
 export function generateRecommendations({
     targetRole, rolesDataset, profileSkills = [], profileInterests = [],
     resumeSections = null, matchRate = 0, missingSkills = [],
-    readinessScore = 0, skillsWithLevels = [], education = ''
+    readinessScore = 0, skillsWithLevels = []
 }) {
     if (!targetRole || !rolesDataset) return [];
 
@@ -45,7 +45,6 @@ export function generateRecommendations({
 
     // Rule 2: Skill Depth (proficiency upgrade)
     const beginnerSkills = swl.filter(s => s.level === 'beginner');
-    const intermediateSkills = swl.filter(s => s.level === 'intermediate');
     if (beginnerSkills.length >= 2 && swl.length >= 5) {
         const relevance = 40 + beginnerSkills.length * 8;
         queue.push({

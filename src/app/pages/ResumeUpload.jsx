@@ -1,12 +1,13 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { saveResume, getResume } from '../../core/db/repo';
 import { extractSkillsFromText, detectResumeSections, computeResumeScore, generateResumeSuggestions, getEnhancedResumeAnalysis } from '../../core/parsing/resumeParser';
-import rolesDataset from '../../core/logic/rolesDataset';
+import { getAllRoles } from '../../core/logic/dataStore';
 import { extractTextFromPdf } from '../../core/parsing/pdfTextExtractor';
 import ProgressBar from '../../ui/components/ProgressBar';
 import { Upload, FileText, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
 
 export default function ResumeUpload() {
+    const rolesDataset = getAllRoles();
     const [mode, setMode] = useState('pdf'); // 'pdf' or 'text'
     const [text, setText] = useState('');
     const [status, setStatus] = useState('');
@@ -20,18 +21,7 @@ export default function ResumeUpload() {
 
     const fileInputRef = useRef(null);
 
-    useEffect(() => {
-        const loadResume = async () => {
-            const dbResume = await getResume();
-            if (dbResume && dbResume.rawText) {
-                setText(dbResume.rawText);
-                updatePreview(dbResume.rawText);
-            }
-        };
-        loadResume();
-    }, []);
-
-    const updatePreview = (t) => {
+    const updatePreview = useCallback((t) => {
         const skills = extractSkillsFromText(t, rolesDataset);
         setPreviewSkills(skills);
 
@@ -47,7 +37,18 @@ export default function ResumeUpload() {
         // Enhanced analysis
         const enhanced = getEnhancedResumeAnalysis(t, rolesDataset.flatMap(r => r.requiredSkills || []));
         setEnhancedAnalysis(enhanced);
-    };
+    }, [rolesDataset]);
+
+    useEffect(() => {
+        const loadResume = async () => {
+            const dbResume = await getResume();
+            if (dbResume && dbResume.rawText) {
+                setText(dbResume.rawText);
+                updatePreview(dbResume.rawText);
+            }
+        };
+        loadResume();
+    }, [updatePreview]);
 
     const handleTextChange = (e) => {
         setText(e.target.value);

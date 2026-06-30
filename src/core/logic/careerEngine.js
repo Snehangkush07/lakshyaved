@@ -45,7 +45,7 @@ function getDemandFactor(role) {
     return factors[role.demandLevel] || 1.0;
 }
 
-export function simulateCareer({ skills = [], interests = [], targetRole, rolesDataset = [], education = '', hasResume = false, skillsWithLevels = [] }) {
+export function simulateCareer({ skills = [], targetRole, rolesDataset = [], education = '', hasResume = false, skillsWithLevels = [] }) {
     const role = rolesDataset.find(r => r.roleId === targetRole);
     if (!role) throw new Error(`Role not found for ID: ${targetRole}`);
 

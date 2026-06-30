@@ -59,7 +59,7 @@ LAKSHYAVED solves all of these **without requiring accounts, servers, or interne
 | **Routing** | React Router DOM 7 |
 | **Database** | Dexie (IndexedDB wrapper) |
 | **PDF Parsing** | pdf.js (client-side) |
-| **Charts** | Recharts |
+| **Charts** | Custom SVG (LineChartMini) |
 | **Icons** | Lucide React |
 | **PDF Export** | jsPDF + html2canvas |
 | **PWA** | vite-plugin-pwa |
@@ -80,46 +80,47 @@ lakshyaved/
 │   │   │   ├── Shell.jsx            # Main layout (header + sidebar + outlet)
 │   │   │   └── Sidebar.jsx          # Navigation sidebar
 │   │   └── pages/
-│   │       ├── CareerSimulator.jsx   # Career projection + scenarios + recommendations
-│   │       ├── SkillGap.jsx          # Skill gap analysis + roadmap + recommendations
+│   │       ├── CareerSimulator.jsx   # Career projection page
+│   │       ├── SkillGap.jsx          # Skill gap analysis page
 │   │       ├── RoleCompare.jsx       # Side-by-side role comparison
-│   │       ├── ResumeUpload.jsx      # Resume ingestion + enhanced analysis
+│   │       ├── ResumeUpload.jsx      # Resume ingestion + analysis
 │   │       ├── DataManager.jsx       # Export/import/clear data
-│   │       ├── Onboarding.jsx        # First-run wizard
+│   │       ├── Onboarding.jsx        # Onboarding wizard
 │   │       ├── NotFound.jsx          # 404 page
-│   │       └── SplashScreen.jsx      # App launch animation
+│   │       └── SplashScreen.jsx      # Launch screen animation
 │   │
 │   ├── core/
 │   │   ├── db/
-│   │   │   ├── db.js                # Dexie schema (4 versions)
-│   │   │   └── repo.js              # Data access layer
+│   │   │   ├── db.js                # Dexie schema design
+│   │   │   └── repo.js              # Repository queries & CRUD
 │   │   ├── logic/
-│   │   │   ├── careerEngine.js      # Career projection algorithm
-│   │   │   ├── skillEngine.js       # Skill gap analysis algorithm
-│   │   │   ├── readiness.js         # Multi-factor readiness scoring
-│   │   │   ├── recommendationEngine.js  # Explainable recommendation generation
-│   │   │   ├── scenarioEngine.js    # What-if scenario simulation
-│   │   │   ├── roadmapEngine.js     # Week-by-week roadmap generation
-│   │   │   ├── dataStore.js         # Centralized data access
-│   │   │   └── rolesDataset.js      # Fallback roles dataset
+│   │   │   ├── careerEngine.js      # Simulation logic
+│   │   │   ├── skillEngine.js       # Analysis rules
+│   │   │   ├── readiness.js         # Score calculation
+│   │   │   ├── recommendationEngine.js  # Advice generation
+│   │   │   ├── scenarioEngine.js    # Scenario logic
+│   │   │   ├── roadmapEngine.js     # Step-by-step logic
+│   │   │   ├── dataStore.js         # Centralized queries
+│   │   │   └── rolesDataset.js      # Core dataset fallback
 │   │   ├── parsing/
-│   │   │   ├── resumeParser.js      # Resume text analysis (sections, verbs, keywords)
-│   │   │   ├── pdfTextExtractor.js  # Client-side PDF parsing
-│   │   │   └── skillNormalizer.js   # Skill name canonicalization
+│   │   │   ├── resumeParser.js      # Parsers & heuristics
+│   │   │   ├── pdfTextExtractor.js  # Local pdf.js extractor
+│   │   │   └── skillNormalizer.js   # Normalization pipeline
 │   │   ├── data/
-│   │   │   ├── roles.v1.json        # 100+ career roles with skills and salaries
-│   │   │   ├── skills.v1.json       # Skill taxonomy with aliases
-│   │   │   └── interests.v1.json    # Interest categories
+│   │   │   ├── roles.v1.json        # 100+ roles catalog
+│   │   │   ├── skills.v1.json       # Skills catalog
+│   │   │   └── interests.v1.json    # Interests catalog
 │   │   └── utils/
-│   │       └── format.js            # Currency formatting utilities
+│   │       ├── format.js            # Currency & text formatters
+│   │       └── pdfExport.js         # Report generation utilities
 │   │
 │   └── ui/
-│       └── components/              # 13 reusable UI components
+│       └── components/              # Reusable components (e.g. RecommendationList, WhatIfScenarios, CareerPathGraph, RoleAutocomplete)
 │
-├── index.html                       # HTML entry with SEO meta tags
-├── package.json                     # Dependencies
-├── vite.config.js                   # Vite + PWA configuration
-├── tailwind.config.js               # Tailwind theme
+├── index.html                       # Base HTML entry
+├── package.json                     # Node dependencies & configs
+├── vite.config.js                   # Vite & PWA building config
+├── tailwind.config.js               # Theme style configurations
 └── README.md                        # This file
 ```
 

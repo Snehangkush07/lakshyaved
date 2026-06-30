@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Play, RotateCcw } from 'lucide-react';
 import ChipInput from '../../ui/components/ChipInput';
 import StatCard from '../../ui/components/StatCard';
@@ -16,24 +16,24 @@ import ReadinessMeter from '../../ui/components/ReadinessMeter';
 import RoadmapPlanner from '../../ui/components/RoadmapPlanner';
 import ExportPdfButton from '../../ui/components/ExportPdfButton';
 import RoleAutocomplete from '../../ui/components/RoleAutocomplete';
+import WhatIfScenarios from '../../ui/components/WhatIfScenarios';
+import RecommendationList from '../../ui/components/RecommendationList';
+import CareerPathGraph from '../../ui/components/CareerPathGraph';
+
+const rolesDataset = getAllRoles();
 
 export default function CareerSimulator() {
-    const rolesDataset = getAllRoles();
     const [skills, setSkills] = useState(['Python', 'React']);
     const [interests, setInterests] = useState(['Leadership']);
     const [targetRole, setTargetRole] = useState(rolesDataset[0]?.roleId || '');
     const [results, setResults] = useState(null);
     const [errorStatus, setErrorStatus] = useState('');
-    const [searchQuery, setSearchQuery] = useState('');
-    const [filteredRoles, setFilteredRoles] = useState(rolesDataset);
     const [resumeData, setResumeData] = useState(null);
 
-    const [skillQuery, setSkillQuery] = useState('');
     const [skillSuggestions, setSkillSuggestions] = useState([]);
     const [skillError, setSkillError] = useState('');
 
     const handleSkillQueryChange = (q) => {
-        setSkillQuery(q);
         if (q) {
             setSkillSuggestions(findSkills(q).map(s => ({
                 id: s.skillId,
@@ -45,12 +45,10 @@ export default function CareerSimulator() {
         }
     };
 
-    const [interestQuery, setInterestQuery] = useState('');
     const [interestSuggestions, setInterestSuggestions] = useState([]);
     const [interestError, setInterestError] = useState('');
 
     const handleInterestQueryChange = (q) => {
-        setInterestQuery(q);
         if (q) {
             setInterestSuggestions(findInterests(q).map(i => ({
                 id: i.interestId,
@@ -60,10 +58,6 @@ export default function CareerSimulator() {
             setInterestSuggestions([]);
         }
     };
-
-    useEffect(() => {
-        setFilteredRoles(findRoles(searchQuery));
-    }, [searchQuery]);
 
     useEffect(() => {
         const loadData = async () => {
@@ -115,14 +109,15 @@ export default function CareerSimulator() {
                 return;
             }
 
+            const profile = await getProfile();
             const simulation = simulateCareer({
                 skills,
                 interests,
                 targetRole,
                 rolesDataset,
-                education: (await getProfile())?.education || '',
+                education: profile?.education || '',
                 hasResume: !!resumeData?.rawText,
-                skillsWithLevels: (await getProfile())?.skillsWithLevels || []
+                skillsWithLevels: profile?.skillsWithLevels || []
             });
 
             setResults(simulation);
@@ -143,13 +138,63 @@ export default function CareerSimulator() {
         setErrorStatus('');
     };
 
-    const readiness = calculateReadiness({
-        targetRole,
-        rolesDataset,
-        profileSkills: skills,
-        profileInterests: interests,
-        resumeRawText: resumeData?.rawText || ''
-    });
+    // Calculate secondary variables
+    const role = useMemo(() => {
+        return results && targetRole ? rolesDataset.find(r => r.roleId === targetRole) : null;
+    }, [targetRole, results]);
+    
+    const missingSkills = useMemo(() => {
+        return role
+            ? role.requiredSkills?.filter(s => !skills.map(us => us.toLowerCase()).includes(s.toLowerCase())) || []
+            : [];
+    }, [role, skills]);
+
+    const readiness = useMemo(() => {
+        return calculateReadiness({
+            targetRole,
+            rolesDataset,
+            profileSkills: skills,
+            profileInterests: interests,
+            resumeRawText: resumeData?.rawText || ''
+        });
+    }, [targetRole, skills, interests, resumeData]);
+
+    const scenarios = useMemo(() => {
+        return results && targetRole ? generateScenarios({
+            targetRole,
+            rolesDataset,
+            profileSkills: skills,
+            matchRate: results.explain?.skillMatchPercent || 0,
+            missingSkills,
+            readinessScore: readiness?.total || 0
+        }) : [];
+    }, [results, targetRole, skills, missingSkills, readiness]);
+
+    const resumeSections = useMemo(() => {
+        return resumeData?.rawText ? detectResumeSections(resumeData.rawText) : null;
+    }, [resumeData]);
+    
+    const recs = useMemo(() => {
+        return results && targetRole ? generateRecommendations({
+            targetRole,
+            rolesDataset,
+            profileSkills: skills,
+            profileInterests: interests,
+            resumeSections,
+            matchRate: results.explain?.skillMatchPercent || 0,
+            missingSkills,
+            readinessScore: readiness?.total || 0
+        }) : [];
+    }, [results, targetRole, skills, interests, resumeSections, missingSkills, readiness]);
+
+    const transitions = useMemo(() => {
+        return results && targetRole ? analyzeTransitions({ 
+            targetRole, 
+            rolesDataset, 
+            profileSkills: skills, 
+            skillsWithLevels: [] 
+        }) : null;
+    }, [results, targetRole, skills]);
 
     return (
         <div className="space-y-6 max-w-7xl mx-auto">
@@ -188,7 +233,7 @@ export default function CareerSimulator() {
                         <ChipInput
                             label="Current Skills"
                             chips={skills}
-                            onAdd={(skill) => { addSkill(skill); setSkillQuery(''); setSkillSuggestions([]); }}
+                            onAdd={(skill) => { addSkill(skill); setSkillSuggestions([]); }}
                             onRemove={removeSkill}
                             placeholder="Add skill..."
                             strict={true}
@@ -201,7 +246,7 @@ export default function CareerSimulator() {
                         <ChipInput
                             label="Interests"
                             chips={interests}
-                            onAdd={(interest) => { addInterest(interest); setInterestQuery(''); setInterestSuggestions([]); }}
+                            onAdd={(interest) => { addInterest(interest); setInterestSuggestions([]); }}
                             onRemove={removeInterest}
                             placeholder="Add interest..."
                             strict={true}
@@ -309,15 +354,15 @@ export default function CareerSimulator() {
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                                     {results.projection.map((row) => (
-                                        <tr key={row.year} className={`group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors`}>
+                                        <tr key={row.year} className="group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-2">
-                                                    <div className={`h-2 w-2 rounded-full bg-slate-600`} />
-                                                    <span className={`text-sm font-bold text-slate-900 dark:text-white`}>Year {row.year}</span>
+                                                    <div className="h-2 w-2 rounded-full bg-slate-600" />
+                                                    <span className="text-sm font-bold text-slate-900 dark:text-white">Year {row.year}</span>
                                                 </div>
                                             </td>
-                                            <td className={`px-6 py-4 text-sm text-slate-600 dark:text-slate-300`}>{row.title}</td>
-                                            <td className={`px-6 py-4 text-sm font-medium text-right text-slate-900 dark:text-white`}>{formatINR(row.salaryINR)}</td>
+                                            <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{row.title}</td>
+                                            <td className="px-6 py-4 text-sm font-medium text-right text-slate-900 dark:text-white">{formatINR(row.salaryINR)}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -327,175 +372,27 @@ export default function CareerSimulator() {
                 )}
 
                 {/* Scenario Simulation */}
-                {results && targetRole && (() => {
-                    const role = rolesDataset.find(r => r.roleId === targetRole);
-                    const missingSkills = role?.requiredSkills?.filter(s => !skills.map(us => us.toLowerCase()).includes(s.toLowerCase())) || [];
-                    const scenarios = generateScenarios({
-                        targetRole,
-                        rolesDataset,
-                        profileSkills: skills,
-                        matchRate: results.explain?.skillMatchPercent || 0,
-                        missingSkills,
-                        readinessScore: readiness?.total || 0
-                    });
-
-                    if (scenarios.length === 0) return null;
-
-                    return (
-                        <div className="bg-[#121a2a] rounded-2xl p-6 shadow-lg border border-[#1e293b]">
-                            <h3 className="text-lg font-bold text-white mb-2">What-If Scenarios</h3>
-                            <p className="text-slate-400 text-xs mb-6">Explore alternative career strategies based on your profile.</p>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                {scenarios.map(s => (
-                                    <div key={s.id} className={`rounded-xl p-5 border transition-all hover:scale-[1.02] ${
-                                        s.id === 'upskill' ? 'bg-emerald-900/10 border-emerald-800/30' :
-                                        s.id === 'pivot' ? 'bg-blue-900/10 border-blue-800/30' :
-                                        'bg-slate-900/50 border-slate-800'
-                                    }`}>
-                                        <div className="text-2xl mb-3">{s.emoji}</div>
-                                        <h4 className="text-white font-bold text-sm mb-1">{s.name}</h4>
-                                        <p className="text-slate-400 text-xs mb-4 leading-relaxed">{s.description}</p>
-                                        <div className="space-y-2 text-xs">
-                                            <div className="flex justify-between">
-                                                <span className="text-slate-500">Match Rate</span>
-                                                <span className="text-white font-bold">{s.matchRate}%</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-slate-500">Year 5 Salary</span>
-                                                <span className="text-white font-bold">{formatINR(s.salaryY5)}</span>
-                                            </div>
-                                            {s.salaryDiff && (
-                                                <div className="flex justify-between">
-                                                    <span className="text-slate-500">Salary Diff</span>
-                                                    <span className={`font-bold ${s.salaryDiff > 0 ? 'text-[#13ec6d]' : 'text-red-400'}`}>
-                                                        {s.salaryDiff > 0 ? '+' : ''}{formatINR(s.salaryDiff)}
-                                                    </span>
-                                                </div>
-                                            )}
-                                            <div className="flex justify-between">
-                                                <span className="text-slate-500">Timeline</span>
-                                                <span className="text-slate-300 font-medium">{s.timeline}</span>
-                                            </div>
-                                        </div>
-                                        <p className={`mt-4 text-[10px] font-bold uppercase tracking-wider ${
-                                            s.id === 'upskill' ? 'text-emerald-400' :
-                                            s.id === 'pivot' ? 'text-blue-400' :
-                                            'text-slate-500'
-                                        }`}>{s.verdict}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    );
-                })()}
+                {results && targetRole && (
+                    <WhatIfScenarios scenarios={scenarios} />
+                )}
 
                 {/* Recommendations */}
-                {results && targetRole && (() => {
-                    const role = rolesDataset.find(r => r.roleId === targetRole);
-                    const missingSkills = role?.requiredSkills?.filter(s => !skills.map(us => us.toLowerCase()).includes(s.toLowerCase())) || [];
-                    const resumeSections = resumeData?.rawText ? detectResumeSections(resumeData.rawText) : null;
-                    const recs = generateRecommendations({
-                        targetRole,
-                        rolesDataset,
-                        profileSkills: skills,
-                        profileInterests: interests,
-                        resumeSections,
-                        matchRate: results.explain?.skillMatchPercent || 0,
-                        missingSkills,
-                        readinessScore: readiness?.total || 0
-                    });
-
-                    if (recs.length === 0) return null;
-
-                    const impactColors = { high: 'text-red-400 bg-red-900/20 border-red-900/30', medium: 'text-amber-400 bg-amber-900/20 border-amber-900/30', low: 'text-[#13ec6d] bg-emerald-900/20 border-emerald-900/30' };
-                    const categoryIcons = { skill: '🎯', resume: '📄', career: '🚀', experience: '💼' };
-
-                    return (
-                        <div className="bg-[#121a2a] rounded-2xl p-6 shadow-lg border border-[#1e293b]">
-                            <h3 className="text-lg font-bold text-white mb-2">Personalized Recommendations</h3>
-                            <p className="text-slate-400 text-xs mb-6">Actionable insights based on your profile analysis.</p>
-                            <div className="space-y-4">
-                                {recs.map(r => (
-                                    <div key={r.id} className="bg-slate-900/50 rounded-xl p-5 border border-slate-800 hover:border-slate-600 transition-colors">
-                                        <div className="flex items-start gap-3">
-                                            <span className="text-xl">{categoryIcons[r.category] || '💡'}</span>
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <h4 className="text-white font-bold text-sm">{r.title}</h4>
-                                                    <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase border ${impactColors[r.impact]}`}>
-                                                        {r.impact}
-                                                    </span>
-                                                </div>
-                                                <p className="text-slate-400 text-xs leading-relaxed mb-2">{r.text}</p>
-                                                <p className="text-slate-300 text-xs font-medium italic">→ {r.actionable}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    );
-                })()}
+                {results && targetRole && (
+                    <RecommendationList recs={recs} />
+                )}
 
                 {/* Career Path Graph */}
-                {results && targetRole && (() => {
-                    const transitions = analyzeTransitions({ targetRole, rolesDataset, profileSkills: skills, skillsWithLevels: [] });
-                    if (!transitions.nextRoles || transitions.nextRoles.length === 0) return null;
-
-                    const difficultyColors = { low: 'text-[#13ec6d] border-emerald-800', medium: 'text-amber-400 border-amber-800', high: 'text-red-400 border-red-800' };
-                    const demandBadge = { high: '🔥', medium: '📊', low: '📉', emerging: '🚀' };
-
-                    return (
-                        <div className="bg-[#121a2a] rounded-2xl p-6 shadow-lg border border-[#1e293b]">
-                            <h3 className="text-lg font-bold text-white mb-1">Career Path Graph</h3>
-                            <p className="text-slate-400 text-xs mb-6">Where you can go next from {transitions.currentRole}.</p>
-                            <div className="space-y-3">
-                                {transitions.nextRoles.map(t => (
-                                    <div key={t.roleId} className="bg-slate-900/50 rounded-xl p-4 border border-slate-800 hover:border-slate-600 transition-colors">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-sm">{demandBadge[t.demandLevel] || '📊'}</span>
-                                                <h4 className="text-white font-bold text-sm">{t.roleName}</h4>
-                                                <span className="text-[9px] text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded font-medium">{t.category}</span>
-                                            </div>
-                                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase border ${difficultyColors[t.difficulty]}`}>{t.difficulty}</span>
-                                        </div>
-                                        <div className="grid grid-cols-3 gap-2 mb-2">
-                                            <div className="text-center">
-                                                <p className="text-[10px] text-slate-500 uppercase">Match</p>
-                                                <p className="text-sm font-bold text-white">{t.matchPercent}%</p>
-                                            </div>
-                                            <div className="text-center">
-                                                <p className="text-[10px] text-slate-500 uppercase">Skills Gap</p>
-                                                <p className="text-sm font-bold text-white">{t.needToLearn.length} to learn</p>
-                                            </div>
-                                            <div className="text-center">
-                                                <p className="text-[10px] text-slate-500 uppercase">Salary Δ</p>
-                                                <p className={`text-sm font-bold ${t.salaryGain >= 0 ? 'text-[#13ec6d]' : 'text-red-400'}`}>{t.salaryGain >= 0 ? '+' : ''}{formatINR(t.salaryGain)}</p>
-                                            </div>
-                                        </div>
-                                        {t.needToLearn.length > 0 && (
-                                            <div className="flex flex-wrap gap-1 mb-2">
-                                                {t.needToLearn.map(s => (
-                                                    <span key={s} className="text-[9px] px-1.5 py-0.5 bg-red-900/20 text-red-400 rounded border border-red-900/30 font-medium">{s}</span>
-                                                ))}
-                                            </div>
-                                        )}
-                                        <p className="text-[10px] text-slate-500 italic">{t.verdict}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    );
-                })()}
+                {results && targetRole && (
+                    <CareerPathGraph transitions={transitions} />
+                )}
 
                 {/* Roadmap Planner */}
                 {results && targetRole && (
                     <div className="pt-4 mt-8 border-t border-[#1e293b]">
                         <RoadmapPlanner
                             targetRole={targetRole}
-                            targetRoleName={rolesDataset.find(r => r.roleId === targetRole)?.roleName}
-                            missingSkills={rolesDataset.find(r => r.roleId === targetRole)?.requiredSkills.filter(s => !skills.map(us => us.toLowerCase()).includes(s.toLowerCase())) || []}
+                            targetRoleName={role?.roleName}
+                            missingSkills={missingSkills}
                         />
                     </div>
                 )}
