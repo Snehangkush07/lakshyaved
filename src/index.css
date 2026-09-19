@@ -1,3 +1,79 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.career-ai-markdown h1,
+.career-ai-markdown h2,
+.career-ai-markdown h3,
+.career-ai-markdown h4 {
+  font-weight: 700;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  color: inherit;
+}
+
+.career-ai-markdown h3 {
+  font-size: 1.125rem;
+  line-height: 1.5rem;
+  color: #13ec6d;
+}
+
+.career-ai-markdown h4 {
+  font-size: 0.975rem;
+  font-weight: 600;
+  margin-top: 0.75rem;
+}
+
+.career-ai-markdown p {
+  margin-bottom: 0.75rem;
+  line-height: 1.625;
+}
+
+.career-ai-markdown ul {
+  list-style-type: disc;
+  padding-left: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.career-ai-markdown ol {
+  list-style-type: decimal;
+  padding-left: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.career-ai-markdown li {
+  margin-bottom: 0.35rem;
+  line-height: 1.5;
+}
+
+.career-ai-markdown strong {
+  font-weight: 600;
+  color: #13ec6d;
+}
+
+.career-ai-markdown code {
+  background-color: rgba(255, 255, 255, 0.08);
+  border-radius: 0.25rem;
+  padding: 0.15rem 0.35rem;
+  font-size: 0.85em;
+  font-family: monospace;
+}
+
+.career-ai-markdown pre {
+  background-color: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.career-ai-markdown blockquote {
+  border-left: 3px solid #13ec6d;
+  padding-left: 0.75rem;
+  font-style: italic;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  opacity: 0.9;
+}

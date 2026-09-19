@@ -117,17 +117,17 @@ export default function RoleCompare() {
     return (
         <div className="max-w-7xl mx-auto space-y-6">
             <div>
-                <h2 className="text-3xl font-bold text-white tracking-tight">Role Compare</h2>
-                <p className="text-slate-400 text-sm mt-1">Evaluate two career paths side by side.</p>
+                <h2 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Role Compare</h2>
+                <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Evaluate two career paths side by side.</p>
             </div>
 
             {/* Selectors */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                 {/* Role A */}
-                <div className="bg-[#121a2a] rounded-2xl p-6 shadow-lg border border-[#13ec6d]/20 relative">
+                <div className="bg-white dark:bg-[#121a2a] rounded-2xl p-6 shadow-lg border border-emerald-500/30 dark:border-[#13ec6d]/20 relative">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-[#13ec6d]/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none" />
-                    <h3 className="text-sm font-bold text-[#13ec6d] uppercase tracking-wider mb-4">Role A</h3>
+                    <h3 className="text-sm font-bold text-emerald-600 dark:text-[#13ec6d] uppercase tracking-wider mb-4">Role A</h3>
 
                     <div className="mb-4">
                         <RoleAutocomplete
@@ -139,14 +139,14 @@ export default function RoleCompare() {
                         />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 mb-4 text-sm bg-slate-900/50 rounded-xl p-4 border border-slate-800/50">
+                    <div className="grid grid-cols-2 gap-4 mb-4 text-sm bg-slate-50 dark:bg-slate-900/50 rounded-xl p-4 border border-slate-200 dark:border-slate-800/50">
                         <div>
                             <span className="text-slate-500 block text-xs">Base Salary</span>
-                            <span className="font-bold text-white">{roleA ? formatINR(roleA.baseSalaryINR || 0) : '-'}</span>
+                            <span className="font-bold text-slate-900 dark:text-white">{roleA ? formatINR(roleA.baseSalaryINR || 0) : '-'}</span>
                         </div>
                         <div>
                             <span className="text-slate-500 block text-xs">Growth (YoY)</span>
-                            <span className="font-bold text-[#13ec6d]">+{roleA ? Math.round(roleA.growthRate * 100) : 0}%</span>
+                            <span className="font-bold text-emerald-600 dark:text-[#13ec6d]">+{roleA ? Math.round(roleA.growthRate * 100) : 0}%</span>
                         </div>
                     </div>
 
@@ -154,9 +154,9 @@ export default function RoleCompare() {
                 </div>
 
                 {/* Role B */}
-                <div className="bg-[#121a2a] rounded-2xl p-6 shadow-lg border border-blue-500/20 relative">
+                <div className="bg-white dark:bg-[#121a2a] rounded-2xl p-6 shadow-lg border border-blue-500/30 dark:border-blue-500/20 relative">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none" />
-                    <h3 className="text-sm font-bold text-blue-400 uppercase tracking-wider mb-4">Role B</h3>
+                    <h3 className="text-sm font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-4">Role B</h3>
 
                     <div className="mb-4">
                         <RoleAutocomplete
@@ -168,14 +168,14 @@ export default function RoleCompare() {
                         />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 mb-4 text-sm bg-slate-900/50 rounded-xl p-4 border border-slate-800/50">
+                    <div className="grid grid-cols-2 gap-4 mb-4 text-sm bg-slate-50 dark:bg-slate-900/50 rounded-xl p-4 border border-slate-200 dark:border-slate-800/50">
                         <div>
                             <span className="text-slate-500 block text-xs">Base Salary</span>
-                            <span className="font-bold text-white">{roleB ? formatINR(roleB.baseSalaryINR || 0) : '-'}</span>
+                            <span className="font-bold text-slate-900 dark:text-white">{roleB ? formatINR(roleB.baseSalaryINR || 0) : '-'}</span>
                         </div>
                         <div>
                             <span className="text-slate-500 block text-xs">Growth (YoY)</span>
-                            <span className="font-bold text-blue-400">+{roleB ? Math.round(roleB.growthRate * 100) : 0}%</span>
+                            <span className="font-bold text-blue-600 dark:text-blue-400">+{roleB ? Math.round(roleB.growthRate * 100) : 0}%</span>
                         </div>
                     </div>
 
@@ -185,33 +185,33 @@ export default function RoleCompare() {
             </div>
 
             {/* AI Recommendation */}
-            <div className="bg-gradient-to-br from-[#121a2a] to-[#1a253a] rounded-2xl p-6 shadow-lg border border-slate-700/50 flex gap-4 items-start">
-                <div className="bg-slate-800/50 rounded-full p-2.5 text-[#13ec6d] shrink-0">
+            <div className="bg-white dark:bg-gradient-to-br dark:from-[#121a2a] dark:to-[#1a253a] rounded-2xl p-6 shadow-lg border border-slate-200 dark:border-slate-700/50 flex gap-4 items-start">
+                <div className="bg-slate-100 dark:bg-slate-800/50 rounded-full p-2.5 text-emerald-600 dark:text-[#13ec6d] shrink-0">
                     <Share2 size={24} />
                 </div>
                 <div>
-                    <h4 className="font-bold text-white text-lg">Analysis & Recommendation</h4>
-                    <p className="text-slate-300 mt-2 leading-relaxed">{recommendation}</p>
+                    <h4 className="font-bold text-slate-900 dark:text-white text-lg">Analysis & Recommendation</h4>
+                    <p className="text-slate-600 dark:text-slate-300 mt-2 leading-relaxed">{recommendation}</p>
                 </div>
             </div>
 
             {/* Compensation Curve */}
-            <div className="bg-[#121a2a] rounded-2xl p-6 shadow-lg border border-slate-700/50">
-                <h3 className="text-lg font-bold text-white mb-6">5-Year Compensation Trajectory</h3>
+            <div className="bg-white dark:bg-[#121a2a] rounded-2xl p-6 shadow-lg border border-slate-200 dark:border-slate-700/50">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6">5-Year Compensation Trajectory</h3>
                 <LineChartMini data1={projA} data2={projB} color1="#13ec6d" color2="#3b82f6" height={220} />
             </div>
 
             {/* Skills Compare */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Role A Skills */}
-                <div className="bg-[#121a2a] rounded-2xl p-6 shadow-lg border border-slate-700/50">
-                    <h4 className="text-sm font-bold text-slate-300 mb-4">{roleA?.roleName || 'Role A'} Overview</h4>
+                <div className="bg-white dark:bg-[#121a2a] rounded-2xl p-6 shadow-lg border border-slate-200 dark:border-slate-700/50">
+                    <h4 className="text-sm font-bold text-slate-800 dark:text-slate-300 mb-4">{roleA?.roleName || 'Role A'} Overview</h4>
 
                     <div className="mb-6">
                         <span className="text-xs text-slate-500 uppercase tracking-widest font-bold mb-3 block">Matched Required Skills ({overlapA.matched.length})</span>
                         <div className="flex flex-wrap gap-1.5">
                             {overlapA.matched.map(s => <SkillChip key={s} label={s} type="matched" />)}
-                            {overlapA.matched.length === 0 && <span className="text-slate-600 text-sm">None</span>}
+                            {overlapA.matched.length === 0 && <span className="text-slate-500 text-sm">None</span>}
                         </div>
                     </div>
 
@@ -219,20 +219,20 @@ export default function RoleCompare() {
                         <span className="text-xs text-slate-500 uppercase tracking-widest font-bold mb-3 block">Missing Required Skills ({overlapA.missing.length})</span>
                         <div className="flex flex-wrap gap-1.5">
                             {overlapA.missing.map(s => <SkillChip key={s} label={s} type="missing" />)}
-                            {overlapA.missing.length === 0 && <span className="text-slate-600 text-sm">None</span>}
+                            {overlapA.missing.length === 0 && <span className="text-slate-500 text-sm">None</span>}
                         </div>
                     </div>
                 </div>
 
                 {/* Role B Skills */}
-                <div className="bg-[#121a2a] rounded-2xl p-6 shadow-lg border border-slate-700/50">
-                    <h4 className="text-sm font-bold text-slate-300 mb-4">{roleB?.roleName || 'Role B'} Overview</h4>
+                <div className="bg-white dark:bg-[#121a2a] rounded-2xl p-6 shadow-lg border border-slate-200 dark:border-slate-700/50">
+                    <h4 className="text-sm font-bold text-slate-800 dark:text-slate-300 mb-4">{roleB?.roleName || 'Role B'} Overview</h4>
 
                     <div className="mb-6">
                         <span className="text-xs text-slate-500 uppercase tracking-widest font-bold mb-3 block">Matched Required Skills ({overlapB.matched.length})</span>
                         <div className="flex flex-wrap gap-1.5">
                             {overlapB.matched.map(s => <SkillChip key={s} label={s} type="matched" />)}
-                            {overlapB.matched.length === 0 && <span className="text-slate-600 text-sm">None</span>}
+                            {overlapB.matched.length === 0 && <span className="text-slate-500 text-sm">None</span>}
                         </div>
                     </div>
 
@@ -240,7 +240,7 @@ export default function RoleCompare() {
                         <span className="text-xs text-slate-500 uppercase tracking-widest font-bold mb-3 block">Missing Required Skills ({overlapB.missing.length})</span>
                         <div className="flex flex-wrap gap-1.5">
                             {overlapB.missing.map(s => <SkillChip key={s} label={s} type="missing" />)}
-                            {overlapB.missing.length === 0 && <span className="text-slate-600 text-sm">None</span>}
+                            {overlapB.missing.length === 0 && <span className="text-slate-500 text-sm">None</span>}
                         </div>
                     </div>
                 </div>

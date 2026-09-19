@@ -1,0 +1,6 @@
+{
+  "name": "Lakshyaved",
+  "description": "Offline-first career planning, skill gap analysis, and Career AI Assistant",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
