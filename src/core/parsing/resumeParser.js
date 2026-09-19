@@ -237,3 +237,23 @@ export function getEnhancedResumeAnalysis(rawText, targetSkills = []) {
         wordCount: rawText ? rawText.split(/\s+/).length : 0
     };
 }
+
+// Convenience & backward compatibility exports
+export const extractSkillsFromResume = (text) => extractSkillsFromText(text);
+export const enhanceResumeAnalysis = (text, targetSkills) => getEnhancedResumeAnalysis(text, targetSkills);
+export function parseResumeText(text) {
+    return {
+        rawText: text,
+        skills: extractSkillsFromText(text),
+        sections: detectResumeSections(text)
+    };
+}
+export function scoreResumeCompleteness(text) {
+    const sections = detectResumeSections(text);
+    return {
+        score: computeResumeScore(sections),
+        sections,
+        suggestions: generateResumeSuggestions(sections)
+    };
+}
+

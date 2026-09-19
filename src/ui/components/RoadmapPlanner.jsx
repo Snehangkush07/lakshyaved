@@ -15,6 +15,7 @@ export default function RoadmapPlanner({ targetRole, targetRoleName, missingSkil
 
     // "Today" View configurations
     const [startDateMs, setStartDateMs] = useState(() => getNow());
+    const [confirmDialog, setConfirmDialog] = useState(null);
 
     // Load active plan if exists
     useEffect(() => {
@@ -80,22 +81,35 @@ export default function RoadmapPlanner({ targetRole, targetRoleName, missingSkil
         setLoading(false);
     };
 
-    const handleReset = async () => {
+    const handleReset = () => {
         if (!plan) return;
-        if (!confirm("Are you sure you want to reset all progress for this plan?")) return;
-
-        const resetState = { completedTaskIds: [], completedAtByTaskId: {}, startDateMs: getNow() };
-        setProgress(resetState);
-        setStartDateMs(getNow());
-        await saveRoadmapProgress(plan.id, resetState);
+        setConfirmDialog({
+            title: "Reset Progress?",
+            message: "Are you sure you want to reset all progress for this plan? Your completed tasks will be cleared.",
+            confirmText: "Reset Progress",
+            onConfirm: async () => {
+                const resetState = { completedTaskIds: [], completedAtByTaskId: {}, startDateMs: getNow() };
+                setProgress(resetState);
+                setStartDateMs(getNow());
+                await saveRoadmapProgress(plan.id, resetState);
+                setConfirmDialog(null);
+            }
+        });
     };
 
-    const handleRegenerate = async () => {
-        if (!confirm("Are you sure you want to delete this plan and generate a new one?")) return;
-        if (plan) {
-            await deleteRoadmapPlan(plan.id);
-        }
-        handleGenerate();
+    const handleRegenerate = () => {
+        setConfirmDialog({
+            title: "Rebuild Plan?",
+            message: "Are you sure you want to delete this plan and generate a new one? This will recalculate the weekly milestones.",
+            confirmText: "Rebuild Plan",
+            onConfirm: async () => {
+                if (plan) {
+                    await deleteRoadmapPlan(plan.id);
+                }
+                handleGenerate();
+                setConfirmDialog(null);
+            }
+        });
     };
 
     const toggleTask = async (taskId) => {
@@ -357,6 +371,42 @@ export default function RoadmapPlanner({ targetRole, targetRoleName, missingSkil
                     })}
                 </div>
             </div>
+
+            {/* In-App Confirmation Modal */}
+            {confirmDialog && (
+                <div 
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4"
+                    onClick={() => setConfirmDialog(null)}
+                >
+                    <div 
+                        className="bg-[#121a2a] border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <h3 className="text-base font-bold text-white">
+                            {confirmDialog.title}
+                        </h3>
+                        <p className="text-sm text-slate-300 leading-relaxed">
+                            {confirmDialog.message}
+                        </p>
+                        <div className="flex items-center justify-end gap-3 pt-2">
+                            <button
+                                type="button"
+                                onClick={() => setConfirmDialog(null)}
+                                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 transition-colors cursor-pointer border border-slate-700"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={confirmDialog.onConfirm}
+                                className="px-4 py-2 rounded-xl text-xs font-semibold bg-red-600 hover:bg-red-700 text-white shadow-sm transition-colors cursor-pointer"
+                            >
+                                {confirmDialog.confirmText || 'Confirm'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

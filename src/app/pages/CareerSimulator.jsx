@@ -200,8 +200,8 @@ export default function CareerSimulator() {
         <div className="space-y-6 max-w-7xl mx-auto">
             <div className="flex justify-between items-end">
                 <div>
-                    <h2 className="text-3xl font-bold text-white tracking-tight">Career Simulator</h2>
-                    <p className="text-slate-400 text-sm mt-1">Project your growth path based on current market data.</p>
+                    <h2 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Career Simulator</h2>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Project your growth path based on current market data.</p>
                 </div>
                 <ExportPdfButton elementId="career-report" filename="lakshyaved-career-report.pdf" label="Export Career Report" />
             </div>

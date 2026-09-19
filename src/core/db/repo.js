@@ -146,6 +146,42 @@ export async function getUserName() {
 }
 
 // --------------------------------------------------
+// Auth Session Management
+// --------------------------------------------------
+
+export async function saveAuthSession(userData) {
+    const existing = await db.profile.get(DEFAULT_ID);
+    await db.profile.put({
+        ...(existing || {}),
+        id: DEFAULT_ID,
+        name: userData.name || existing?.name || 'Developer',
+        email: userData.email || existing?.email || '',
+        targetRole: userData.targetRole || existing?.targetRole || 'Full Stack Developer',
+        avatar: userData.avatar || existing?.avatar || '',
+        updatedAt: Date.now()
+    });
+    await db.appState.put({
+        id: DEFAULT_ID,
+        onboarded: true,
+        authenticated: true,
+        userEmail: userData.email || '',
+        userName: userData.name || 'Developer',
+        updatedAt: Date.now()
+    });
+}
+
+export async function clearAuthSession() {
+    const existingState = await db.appState.get(DEFAULT_ID);
+    if (existingState) {
+        await db.appState.put({
+            ...existingState,
+            authenticated: false,
+            updatedAt: Date.now()
+        });
+    }
+}
+
+// --------------------------------------------------
 // Data Export / Import
 // --------------------------------------------------
 
