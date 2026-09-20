@@ -23,4 +23,24 @@ db.version(4).stores({
     appState: 'id' // extended: onboarded (boolean)
 });
 
+db.version(5).stores({
+    resume: 'id',
+}).upgrade(async (tx) => {
+    await tx.table('resume').toCollection().modify((row) => {
+        // Old shape: row.rawText might be an object { fileName, fileType, rawText, parsedData }
+        if (row && row.rawText && typeof row.rawText === 'object') {
+            const old = row.rawText;
+            row.fileName = old.fileName || row.fileName || 'resume.pdf';
+            row.fileType = old.fileType || row.fileType || 'pdf';
+            row.parsedData = old.parsedData || row.parsedData || null;
+            row.rawText = typeof old.rawText === 'string' ? old.rawText : '';
+        } else {
+            // Old shape was a plain string; add missing fields with defaults
+            if (!row.fileName) row.fileName = 'resume.pdf';
+            if (!row.fileType) row.fileType = 'pdf';
+            if (typeof row.parsedData === 'undefined') row.parsedData = null;
+        }
+    });
+});
+
 export default db;

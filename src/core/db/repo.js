@@ -18,12 +18,30 @@ export async function getProfile() {
     return db.profile.get(DEFAULT_ID);
 }
 
-export async function saveResume(rawText) {
-    return db.resume.put({
+export async function saveResume(input) {
+    let fileName = 'resume.pdf';
+    let fileType = 'pdf';
+    let rawText = '';
+    let parsedData = null;
+
+    if (typeof input === 'string') {
+        rawText = input;
+    } else if (input && typeof input === 'object') {
+        fileName = input.fileName || fileName;
+        fileType = input.fileType || fileType;
+        rawText = typeof input.rawText === 'string' ? input.rawText : '';
+        parsedData = input.parsedData || null;
+    }
+
+    await db.resume.put({
         id: DEFAULT_ID,
+        fileName,
+        fileType,
         rawText,
-        updatedAt: Date.now()
+        parsedData,
+        updatedAt: Date.now(),
     });
+    return DEFAULT_ID;
 }
 
 export async function getResume() {

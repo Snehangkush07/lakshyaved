@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+.env
+.env.local
+
+# Local audit documents (never push to GitHub)
+LAKSHYAVED_TECHNICAL_BLUEPRINT.md
+LAKSHYAVED_DEEP_DIVE_INTERNALS.md
+LAKSHYAVED_GAP_FILL_AUDIT.md
