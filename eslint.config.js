@@ -32,4 +32,11 @@ export default defineConfig([
       globals: globals.node,
     },
   },
+  {
+    files: ['scripts/**'],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
 ])
+
