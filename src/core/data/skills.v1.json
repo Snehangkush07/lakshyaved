@@ -2098,5 +2098,318 @@
       "professional",
       "v2"
     ]
+  },
+  {
+    "skillId": "3d-design",
+    "skillName": "3D Design",
+    "category": "concept",
+    "aliases": [
+      "3d modeling",
+      "three-dimensional design"
+    ],
+    "description": "Professional level proficiency in 3D Design.",
+    "tags": [
+      "concept",
+      "professional",
+      "v2"
+    ]
+  },
+  {
+    "skillId": "3d-math",
+    "skillName": "3D Math",
+    "category": "concept",
+    "aliases": [
+      "linear algebra 3d",
+      "vector math",
+      "quaternions"
+    ],
+    "description": "Professional level proficiency in 3D Math.",
+    "tags": [
+      "concept",
+      "professional",
+      "v2"
+    ]
+  },
+  {
+    "skillId": "ab-testing",
+    "skillName": "A/B Testing",
+    "category": "concept",
+    "aliases": [
+      "split testing",
+      "bucket testing",
+      "ab testing"
+    ],
+    "description": "Professional level proficiency in A/B Testing.",
+    "tags": [
+      "concept",
+      "professional",
+      "v2"
+    ]
+  },
+  {
+    "skillId": "api-documentation",
+    "skillName": "API Documentation",
+    "category": "concept",
+    "aliases": [
+      "swagger docs",
+      "openapi docs",
+      "api reference"
+    ],
+    "description": "Professional level proficiency in API Documentation.",
+    "tags": [
+      "concept",
+      "professional",
+      "v2"
+    ]
+  },
+  {
+    "skillId": "api-testing",
+    "skillName": "API Testing",
+    "category": "concept",
+    "aliases": [
+      "rest api testing",
+      "endpoint testing",
+      "api test automation"
+    ],
+    "description": "Professional level proficiency in API Testing.",
+    "tags": [
+      "concept",
+      "professional",
+      "v2"
+    ]
+  },
+  {
+    "skillId": "budgeting",
+    "skillName": "Budgeting",
+    "category": "concept",
+    "aliases": [
+      "financial budgeting",
+      "budget planning",
+      "cost management"
+    ],
+    "description": "Professional level proficiency in Budgeting.",
+    "tags": [
+      "concept",
+      "professional",
+      "v2"
+    ]
+  },
+  {
+    "skillId": "bug-tracking",
+    "skillName": "Bug Tracking",
+    "category": "concept",
+    "aliases": [
+      "defect tracking",
+      "issue tracking"
+    ],
+    "description": "Professional level proficiency in Bug Tracking.",
+    "tags": [
+      "concept",
+      "professional",
+      "v2"
+    ]
+  },
+  {
+    "skillId": "cloud-databases",
+    "skillName": "Cloud Databases",
+    "category": "concept",
+    "aliases": [
+      "managed databases",
+      "cloud db"
+    ],
+    "description": "Professional level proficiency in Cloud Databases.",
+    "tags": [
+      "concept",
+      "professional",
+      "v2"
+    ]
+  },
+  {
+    "skillId": "cloud-networking",
+    "skillName": "Cloud Networking",
+    "category": "concept",
+    "aliases": [
+      "vpc",
+      "virtual private cloud",
+      "cloud network architecture"
+    ],
+    "description": "Professional level proficiency in Cloud Networking.",
+    "tags": [
+      "concept",
+      "professional",
+      "v2"
+    ]
+  },
+  {
+    "skillId": "contract-management",
+    "skillName": "Contract Management",
+    "category": "concept",
+    "aliases": [
+      "contract lifecycle management",
+      "vendor contracts",
+      "contract administration"
+    ],
+    "description": "Professional level proficiency in Contract Management.",
+    "tags": [
+      "concept",
+      "professional",
+      "v2"
+    ]
+  },
+  {
+    "skillId": "cost-optimization",
+    "skillName": "Cost Optimization",
+    "category": "concept",
+    "aliases": [
+      "cloud cost optimization",
+      "finops",
+      "resource optimization"
+    ],
+    "description": "Professional level proficiency in Cost Optimization.",
+    "tags": [
+      "concept",
+      "professional",
+      "v2"
+    ]
+  },
+  {
+    "skillId": "documentation",
+    "skillName": "Documentation",
+    "category": "concept",
+    "aliases": [
+      "technical documentation",
+      "docs writing",
+      "software documentation"
+    ],
+    "description": "Professional level proficiency in Documentation.",
+    "tags": [
+      "concept",
+      "professional",
+      "v2"
+    ]
+  },
+  {
+    "skillId": "enterprise-patterns",
+    "skillName": "Enterprise Patterns",
+    "category": "concept",
+    "aliases": [
+      "enterprise architecture patterns",
+      "enterprise integration patterns"
+    ],
+    "description": "Professional level proficiency in Enterprise Patterns.",
+    "tags": [
+      "concept",
+      "professional",
+      "v2"
+    ]
+  },
+  {
+    "skillId": "forecasting",
+    "skillName": "Forecasting",
+    "category": "concept",
+    "aliases": [
+      "financial forecasting",
+      "demand forecasting",
+      "projection modeling"
+    ],
+    "description": "Professional level proficiency in Forecasting.",
+    "tags": [
+      "concept",
+      "professional",
+      "v2"
+    ]
+  },
+  {
+    "skillId": "game-design",
+    "skillName": "Game Design",
+    "category": "concept",
+    "aliases": [
+      "gameplay design",
+      "level design",
+      "game mechanics"
+    ],
+    "description": "Professional level proficiency in Game Design.",
+    "tags": [
+      "concept",
+      "professional",
+      "v2"
+    ]
+  },
+  {
+    "skillId": "hr-policies",
+    "skillName": "HR Policies",
+    "category": "concept",
+    "aliases": [
+      "company policies",
+      "hr compliance",
+      "people policies"
+    ],
+    "description": "Professional level proficiency in HR Policies.",
+    "tags": [
+      "concept",
+      "professional",
+      "v2"
+    ]
+  },
+  {
+    "skillId": "integration",
+    "skillName": "Integration",
+    "category": "concept",
+    "aliases": [
+      "system integration",
+      "data integration",
+      "software integration"
+    ],
+    "description": "Professional level proficiency in Integration.",
+    "tags": [
+      "concept",
+      "professional",
+      "v2"
+    ]
+  },
+  {
+    "skillId": "localization",
+    "skillName": "Localization",
+    "category": "concept",
+    "aliases": [
+      "l10n",
+      "software localization"
+    ],
+    "description": "Professional level proficiency in Localization.",
+    "tags": [
+      "concept",
+      "professional",
+      "v2"
+    ]
+  },
+  {
+    "skillId": "marketing-automation",
+    "skillName": "Marketing Automation",
+    "category": "concept",
+    "aliases": [
+      "campaign automation",
+      "marketing workflows"
+    ],
+    "description": "Professional level proficiency in Marketing Automation.",
+    "tags": [
+      "concept",
+      "professional",
+      "v2"
+    ]
+  },
+  {
+    "skillId": "message-queues",
+    "skillName": "Message Queues",
+    "category": "concept",
+    "aliases": [
+      "message broker",
+      "message queuing"
+    ],
+    "description": "Professional level proficiency in Message Queues.",
+    "tags": [
+      "concept",
+      "professional",
+      "v2"
+    ]
   }
 ]
