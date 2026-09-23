@@ -1364,7 +1364,8 @@
     "category": "concept",
     "aliases": [
       "framer motion",
-      "after effects"
+      "after effects",
+      "motion graphics"
     ],
     "description": "Professional level proficiency in Motion Design.",
     "tags": [
@@ -1986,6 +1987,114 @@
     "description": "Professional level proficiency in Onboarding.",
     "tags": [
       "concept",
+      "professional",
+      "v2"
+    ]
+  },
+  {
+    "skillId": "crm-tools",
+    "skillName": "CRM Tools",
+    "category": "tool",
+    "aliases": [
+      "customer relationship management",
+      "crm software",
+      "crm platforms"
+    ],
+    "description": "Professional level proficiency in CRM Tools.",
+    "tags": [
+      "tool",
+      "professional",
+      "v2"
+    ]
+  },
+  {
+    "skillId": "security",
+    "skillName": "Security",
+    "category": "concept",
+    "aliases": [
+      "application security",
+      "systems security",
+      "appsec"
+    ],
+    "description": "Professional level proficiency in Security.",
+    "tags": [
+      "concept",
+      "professional",
+      "v2"
+    ]
+  },
+  {
+    "skillId": "networking",
+    "skillName": "Networking",
+    "category": "concept",
+    "aliases": [
+      "computer networking",
+      "network architecture"
+    ],
+    "description": "Professional level proficiency in Networking.",
+    "tags": [
+      "concept",
+      "professional",
+      "v2"
+    ]
+  },
+  {
+    "skillId": "reporting",
+    "skillName": "Reporting",
+    "category": "concept",
+    "aliases": [
+      "business reporting",
+      "financial reporting",
+      "data reporting"
+    ],
+    "description": "Professional level proficiency in Reporting.",
+    "tags": [
+      "concept",
+      "professional",
+      "v2"
+    ]
+  },
+  {
+    "skillId": "scripting",
+    "skillName": "Scripting",
+    "category": "concept",
+    "aliases": [
+      "automation scripting",
+      "script writing"
+    ],
+    "description": "Professional level proficiency in Scripting.",
+    "tags": [
+      "concept",
+      "professional",
+      "v2"
+    ]
+  },
+  {
+    "skillId": "mentoring",
+    "skillName": "Mentoring",
+    "category": "soft-skill",
+    "aliases": [
+      "coaching",
+      "peer mentoring"
+    ],
+    "description": "Professional level proficiency in Mentoring.",
+    "tags": [
+      "soft-skill",
+      "professional",
+      "v2"
+    ]
+  },
+  {
+    "skillId": "cloud",
+    "skillName": "Cloud",
+    "category": "platform",
+    "aliases": [
+      "cloud computing",
+      "cloud infrastructure"
+    ],
+    "description": "Professional level proficiency in Cloud.",
+    "tags": [
+      "platform",
       "professional",
       "v2"
     ]
