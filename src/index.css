@@ -82,18 +82,43 @@
 
 .career-ai-markdown table {
   display: block;
-  overflow-x: auto;
   max-width: 100%;
+  overflow-x: auto;
   border-collapse: collapse;
-  margin-top: 0.5rem;
-  margin-bottom: 0.75rem;
+  border-spacing: 0;
+  margin-top: 0.75rem;
+  margin-bottom: 1rem;
+  font-size: 0.8rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.career-ai-markdown th,
-.career-ai-markdown td {
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 0.4rem 0.6rem;
+.career-ai-markdown table thead {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.career-ai-markdown table th {
+  text-align: left;
+  font-weight: 600;
+  padding: 0.5rem 0.75rem;
+  color: #13ec6d;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   white-space: nowrap;
+}
+
+.career-ai-markdown table td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: inherit;
+  vertical-align: top;
+}
+
+.career-ai-markdown table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.career-ai-markdown table tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.02);
 }
 
 .career-ai-markdown blockquote {

@@ -1,13 +1,15 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
     Sparkles, Send, Square, Trash2, Bot, User, 
     Copy, Check, RefreshCw
 } from 'lucide-react';
-import Markdown from 'react-markdown';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getProfile, getResume, getSkillGapResults, getRoadmapPlanByRole, getRoadmapProgress } from '../../core/db/repo';
 import { getAllRoles } from '../../core/logic/dataStore';
 import { calculateReadiness } from '../../core/logic/readiness';
+import { useAuth } from '../../core/context/AuthContext';
 
 const INITIAL_GREETING = {
     id: 'welcome-msg',
@@ -121,6 +123,7 @@ function createChatMessage({ role, content, source = '', isFallback = false, ori
 }
 
 export default function CareerAssistant() {
+    const { user, loading: authLoading } = useAuth();
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const hasAutoSentRef = useRef(false);
@@ -171,7 +174,7 @@ export default function CareerAssistant() {
         }
     }, [messages]);
 
-    const fetchContext = async () => {
+    const fetchContext = useCallback(async () => {
         try {
             const [prof, gap, resume] = await Promise.all([
                 getProfile().catch(() => null),
@@ -182,10 +185,18 @@ export default function CareerAssistant() {
             const rawResume = typeof resume?.rawText === 'string' ? resume.rawText : '';
             const resumeText = rawResume.slice(0, 20000);
 
-            const targetRole = prof?.targetRole || gap?.targetRole || 'Software Engineer';
-            let plan = await getRoadmapPlanByRole(targetRole, 4).catch(() => null);
-            if (!plan) plan = await getRoadmapPlanByRole(targetRole, 8).catch(() => null);
-            if (!plan) plan = await getRoadmapPlanByRole(targetRole, 12).catch(() => null);
+            const targetRole = prof?.targetRole || gap?.targetRole || (prof ? 'Software Engineer' : null);
+            const allRoles = getAllRoles();
+            const targetRoleLower = (targetRole || '').toLowerCase();
+            const matchedRole = targetRoleLower ? allRoles.find(r => 
+                r.roleId?.toLowerCase() === targetRoleLower || 
+                r.roleName?.toLowerCase() === targetRoleLower ||
+                (r.aliases && r.aliases.some(a => a.toLowerCase() === targetRoleLower))
+            ) : null;
+
+            let plan = targetRole ? await getRoadmapPlanByRole(targetRole, 4).catch(() => null) : null;
+            if (targetRole && !plan) plan = await getRoadmapPlanByRole(targetRole, 8).catch(() => null);
+            if (targetRole && !plan) plan = await getRoadmapPlanByRole(targetRole, 12).catch(() => null);
             let progress = null;
             if (plan) {
                 progress = await getRoadmapProgress(plan.id).catch(() => null);
@@ -210,35 +221,35 @@ export default function CareerAssistant() {
             let computedMissingSkills = null;
             let computedReadiness = null;
 
-            if (prof && targetRole) {
-                const allRoles = getAllRoles();
-                const matchedRole = allRoles.find(r => r.roleName === targetRole || r.roleId === targetRole);
-                if (matchedRole) {
-                    const reqSkills = matchedRole.requiredSkills || [];
-                    const userSkills = prof.skills || [];
-                    
-                    computedMatchedSkills = userSkills.filter(
-                        us => reqSkills.some(rs => rs.toLowerCase() === us.toLowerCase())
-                    );
+            if (prof && prof.targetRole) {
+                const reqSkills = matchedRole?.requiredSkills || [];
+                const userSkills = prof.skills || [];
+                
+                computedMatchedSkills = userSkills.filter(
+                    us => reqSkills.some(rs => rs.toLowerCase() === us.toLowerCase())
+                );
 
-                    computedOtherSkills = userSkills.filter(
-                        us => !reqSkills.some(rs => rs.toLowerCase() === us.toLowerCase())
-                    );
+                computedOtherSkills = userSkills.filter(
+                    us => !reqSkills.some(rs => rs.toLowerCase() === us.toLowerCase())
+                );
 
-                    computedMissingSkills = reqSkills.filter(
-                        rs => !userSkills.some(us => us.toLowerCase() === rs.toLowerCase())
-                    );
-                    
-                    const readinessResult = calculateReadiness({
-                        targetRole: matchedRole.roleId,
-                        rolesDataset: allRoles,
-                        profileSkills: userSkills,
-                        profileInterests: prof.interests || []
-                    });
-                    
-                    if (readinessResult) {
-                        computedReadiness = readinessResult.total;
-                    }
+                computedMissingSkills = reqSkills.filter(
+                    rs => !userSkills.some(us => us.toLowerCase() === rs.toLowerCase())
+                );
+                
+                const readinessTarget = matchedRole?.roleId || prof.targetRole;
+                const readinessResult = calculateReadiness({
+                    targetRole: readinessTarget,
+                    rolesDataset: allRoles,
+                    profileSkills: userSkills,
+                    profileInterests: prof.interests ?? [],
+                    resumeRawText: resume?.rawText ?? '',
+                    education: prof.education ?? '',
+                    skillsWithLevels: prof.skillsWithLevels ?? []
+                });
+                
+                if (readinessResult && typeof readinessResult.total === 'number') {
+                    computedReadiness = readinessResult.total;
                 }
             }
 
@@ -249,14 +260,14 @@ export default function CareerAssistant() {
             let finalReadiness = computedReadiness;
             if (finalReadiness === null) {
                 if (gap?.matchedSkills?.length) {
-                    finalReadiness = Math.round(((gap?.matchedSkills?.length ?? 0) / Math.max(1, (gap?.matchedSkills?.length ?? 0) + (gap?.missingSkills?.length ?? 0))) * 100);
+                    finalReadiness = Math.round(((gap.matchedSkills.length) / Math.max(1, gap.matchedSkills.length + (gap.missingSkills?.length ?? 0))) * 100);
                 } else {
                     finalReadiness = null;
                 }
             }
 
             const ctx = {
-                targetRole: targetRole,
+                targetRole: matchedRole?.roleName || targetRole || null,
                 skills: prof?.skills ?? gap?.matchedSkills ?? [],
                 matchedSkills: finalMatchedSkills,
                 otherSkills: finalOtherSkills,
@@ -271,9 +282,9 @@ export default function CareerAssistant() {
         } catch (err) {
             console.error('Failed to load Lakshyaved profile context:', err);
         }
-    };
+    }, []);
 
-    // Load profile context from Dexie
+    // Health check on mount
     useEffect(() => {
         async function checkHealth() {
             try {
@@ -292,9 +303,15 @@ export default function CareerAssistant() {
             }
         }
 
-        fetchContext();
         checkHealth();
     }, []);
+
+    // Load profile context from Dexie on mount and after auth resolves
+    useEffect(() => {
+        if (!authLoading) {
+            fetchContext();
+        }
+    }, [authLoading, user, fetchContext]);
 
     // Auto-scroll to bottom
     const scrollToBottom = () => {
@@ -660,7 +677,7 @@ export default function CareerAssistant() {
                                                     <p className="whitespace-pre-wrap break-words">{msg.content}</p>
                                                 ) : (
                                                     <div className="career-ai-markdown space-y-3 prose dark:prose-invert max-w-none min-w-0 break-words">
-                                                        <Markdown>{msg.content}</Markdown>
+                                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                                                     </div>
                                                 )}
 
