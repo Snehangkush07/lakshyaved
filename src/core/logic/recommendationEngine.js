@@ -25,12 +25,13 @@ export function generateRecommendations({
 
     // Rule 1: Missing Skills (critical gap)
     if (missingSkills.length > 0) {
-        const topMissing = missingSkills.slice(0, 3);
+        const shown = missingSkills.slice(0, 6).join(', ');
+        const more = missingSkills.length > 6 ? ` and ${missingSkills.length - 6} more` : '';
         const weights = role.skillWeights || {};
         // Sort by weight to recommend highest-weight skill first
         const sorted = [...missingSkills].sort((a, b) => (weights[b] || 0.8) - (weights[a] || 0.8));
         const topWeighted = sorted[0];
-        const improvementEstimate = Math.min(35, Math.round((topMissing.length / (role.requiredSkills?.length || 1)) * 70));
+        const improvementEstimate = Math.min(35, Math.round((Math.min(3, missingSkills.length) / (role.requiredSkills?.length || 1)) * 70));
         const relevance = 50 + missingSkills.length * 5;
 
         queue.push({
@@ -38,7 +39,7 @@ export function generateRecommendations({
             impact: missingSkills.length >= 3 ? 'high' : 'medium',
             relevance,
             title: `Bridge ${missingSkills.length} Skill Gap${missingSkills.length > 1 ? 's' : ''}`,
-            text: `Missing: ${topMissing.join(', ')}${missingSkills.length > 3 ? ` +${missingSkills.length - 3} more` : ''}. Learning these could increase your weighted match from ${matchRate}% to ~${Math.min(100, matchRate + improvementEstimate)}%.`,
+            text: `Missing: ${shown}${more}. Learning these could increase your weighted match from ${matchRate}% to ~${Math.min(100, matchRate + improvementEstimate)}%.`,
             actionable: `Start with ${topWeighted} — it has the highest weight (${Math.round((weights[topWeighted] || 0.8) * 100)}%) for ${role.roleName}.`
         });
     }
@@ -47,11 +48,14 @@ export function generateRecommendations({
     const beginnerSkills = swl.filter(s => s.level === 'beginner');
     if (beginnerSkills.length >= 2 && swl.length >= 5) {
         const relevance = 40 + beginnerSkills.length * 8;
+        const beginnerNames = beginnerSkills.map(s => s.name);
+        const shownBeginner = beginnerNames.slice(0, 6).join(', ');
+        const moreBeginner = beginnerNames.length > 6 ? ` and ${beginnerNames.length - 6} more` : '';
         queue.push({
             id: 'deepen-skills', category: 'skill',
             impact: 'medium', relevance,
             title: 'Deepen Skill Proficiency',
-            text: `${beginnerSkills.length} of your skills are at beginner level (${beginnerSkills.map(s => s.name).slice(0, 3).join(', ')}). Advancing these to intermediate would boost your weighted match by ~${Math.round(beginnerSkills.length * 5)}%.`,
+            text: `${beginnerSkills.length} of your skills are at beginner level (${shownBeginner}${moreBeginner}). Advancing these to intermediate would boost your weighted match by ~${Math.round(beginnerSkills.length * 5)}%.`,
             actionable: `Focus on building projects with ${beginnerSkills[0].name} to move from beginner to intermediate.`
         });
     }

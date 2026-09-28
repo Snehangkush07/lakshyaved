@@ -1,218 +1,149 @@
-# LAKSHYAVED — AI-Powered Career Planning Platform
+# Lakshyaved
 
-> An offline-first, privacy-centric career simulation and skill gap analysis tool that runs entirely in your browser.
+A local-first, privacy-preserving career planning and skill gap analysis app for tech students and early-career engineers.
 
----
+- **What does this career actually look like 5 years out?** Interactive salary projections, title progressions, and career transitions across optimistic, realistic, and conservative scenarios.
+- **What skills am I missing right now?** In-browser resume parsing and target role skill gap analysis that pinpoints matched, adjacent, and missing skills.
+- **How do I get from where I am to where I want to be?** Week-by-week personalized learning roadmaps with curated resources and task-level AI assistance.
 
-## 🎯 What is LAKSHYAVED?
+## Features
 
-LAKSHYAVED is a **Progressive Web App (PWA)** that helps students and professionals plan their career trajectory using data-driven simulations. Unlike cloud-based alternatives, **everything runs 100% client-side** — your resume, skills, and career data never leave your browser.
+- **Career Simulator:** Visualizes 5-year salary trajectories and title progressions based on current skill match, growth rates, and what-if upskilling or pivot scenarios.
+- **Skill Gap Analyzer:** Parses uploaded resumes or entered skills in-browser and compares them against target role benchmarks to calculate a multi-factor readiness score.
+- **Role Compare:** Provides side-by-side evaluation of any two technical career paths, contrasting required skills, compensation bands, and growth trajectories.
+- **Career AI Assistant:** Delivers context-aware career guidance, interview prep, and resume feedback using Gemini 2.5 Flash with automatic model fallbacks and built-in offline advisory.
+- **Roadmap Planner:** Generates structured, week-by-week learning milestones for target roles with task completion tracking, curated documentation links, and one-click AI prompts.
+- **Data Manager:** Enables full control over local career data with one-click JSON backup export, data restoration, and complete client-side database reset.
 
-### Core Problem Solved
-Students and early-career professionals lack tools to:
-- Understand which skills they need for their dream role
-- Visualize realistic salary progression over time
-- Get actionable, personalized career recommendations
-- Compare multiple career paths quantitatively
+## Tech Stack
 
-LAKSHYAVED solves all of these **without requiring accounts, servers, or internet connectivity**.
+### Frontend
+- React 19 (`^19.2.0`)
+- React DOM (`^19.2.0`)
+- React Router DOM (`^7.13.0`)
+- Tailwind CSS 3 (`^3.4.19`)
+- Recharts (`^3.10.1`)
+- Three.js (`^0.186.0`)
+- Lucide React (`^0.575.0`)
+- React Markdown (`^10.1.0`)
 
----
+### State and Storage
+- Dexie (`^4.3.0`) (IndexedDB wrapper)
+- Browser `localStorage` (chat history and client preferences)
 
-## ✨ Features
+### Backend
+- Express (`^5.2.1`)
+- tsx (`^4.23.13`)
 
-### Core Features
-| Feature | Description |
-|---------|-------------|
-| **Career Simulator** | 5-year salary projection with dynamic title progression based on skill match |
-| **Skill Gap Analyzer** | Upload resume (PDF/text) → extract skills → compare against target role requirements |
-| **Role Comparison** | Side-by-side comparison of two career paths with salary curves and skill overlap |
-| **Resume Upload** | Client-side PDF parsing with OCR — no server uploads |
+### AI
+- Google Gen AI SDK (`@google/genai` `^2.22.0`)
+- Model chain: Primary `gemini-2.5-flash` with fallbacks to `gemini-3.1-flash-lite`, `gemini-flash-lite-latest`, and local rule-based advisory
 
-### Advanced Features
-| Feature | Description |
-|---------|-------------|
-| **Scenario Simulation** | What-if analysis: Current Path vs Upskill Path vs Pivot Path |
-| **Explainable Recommendations** | Rule-based, actionable career advice with impact ratings |
-| **Enhanced Resume Analysis** | Action verb detection, bullet count, keyword density, experience estimation |
-| **Readiness Scoring** | Multi-factor readiness score (Skill Coverage, Resume Quality, Interest Alignment) |
-| **Personalized Roadmaps** | Week-by-week learning plans with task tracking |
+### Parsing
+- pdfjs-dist (`^5.4.624`) (client-side PDF text extraction)
+- jsPDF (`^4.2.0`) and html2canvas (`^1.4.1`) (client-side PDF document generation)
 
-### Product Quality
-| Feature | Description |
-|---------|-------------|
-| **Onboarding Wizard** | First-run experience collecting name, education, target role, and skills |
-| **Data Export/Import** | JSON backup and restore — never lose your data |
-| **Error Boundaries** | Graceful crash handling with recovery |
-| **PWA Support** | Installable as a native-like app on any device |
-| **Offline-First** | Full functionality without internet using IndexedDB |
+### Build and Tooling
+- Vite 8 (`^8.0.0-beta.13`)
+- vite-plugin-pwa (`^1.2.0`)
+- esbuild (`^0.28.2`)
+- ESLint 9 (`^9.39.1`)
+- PostCSS (`^8.5.6`) and Autoprefixer (`^10.4.24`)
 
----
+## Local-First Architecture
 
-## 🏗️ Tech Stack
+Lakshyaved is architected as a local-first application where user profiles, resumes, and career analysis run and persist entirely inside the browser using IndexedDB via Dexie. The Node.js Express server acts solely as a secure proxy to Google's Gemini API, ensuring API keys remain on the server without storing user records. There is no user account system, external database, or remote session state. All core features—including resume parsing, skill matching, salary projections, and roadmap tracking—work completely offline. Only live AI chat queries require internet access, and even then, the assistant gracefully falls back to a local offline advisory engine if network access or API quota is unavailable.
 
-| Layer | Technology |
-|-------|-----------|
-| **Frontend** | React 19 |
-| **Build** | Vite 8 |
-| **Styling** | Tailwind CSS 3 |
-| **Routing** | React Router DOM 7 |
-| **Database** | Dexie (IndexedDB wrapper) |
-| **PDF Parsing** | pdf.js (client-side) |
-| **Charts** | Custom SVG (LineChartMini) |
-| **Icons** | Lucide React |
-| **PDF Export** | jsPDF + html2canvas |
-| **PWA** | vite-plugin-pwa |
-
----
-
-## 📁 Project Structure
-
-```
-lakshyaved/
-├── src/
-│   ├── App.jsx                      # Root: splash → onboarding → router
-│   ├── main.jsx                     # Entry point
-│   ├── index.css                    # Global styles
-│   │
-│   ├── app/
-│   │   ├── layout/
-│   │   │   ├── Shell.jsx            # Main layout (header + sidebar + outlet)
-│   │   │   └── Sidebar.jsx          # Navigation sidebar
-│   │   └── pages/
-│   │       ├── CareerSimulator.jsx   # Career projection page
-│   │       ├── SkillGap.jsx          # Skill gap analysis page
-│   │       ├── RoleCompare.jsx       # Side-by-side role comparison
-│   │       ├── ResumeUpload.jsx      # Resume ingestion + analysis
-│   │       ├── DataManager.jsx       # Export/import/clear data
-│   │       ├── Onboarding.jsx        # Onboarding wizard
-│   │       ├── NotFound.jsx          # 404 page
-│   │       └── SplashScreen.jsx      # Launch screen animation
-│   │
-│   ├── core/
-│   │   ├── db/
-│   │   │   ├── db.js                # Dexie schema design
-│   │   │   └── repo.js              # Repository queries & CRUD
-│   │   ├── logic/
-│   │   │   ├── careerEngine.js      # Simulation logic
-│   │   │   ├── skillEngine.js       # Analysis rules
-│   │   │   ├── readiness.js         # Score calculation
-│   │   │   ├── recommendationEngine.js  # Advice generation
-│   │   │   ├── scenarioEngine.js    # Scenario logic
-│   │   │   ├── roadmapEngine.js     # Step-by-step logic
-│   │   │   ├── dataStore.js         # Centralized queries
-│   │   │   └── rolesDataset.js      # Core dataset fallback
-│   │   ├── parsing/
-│   │   │   ├── resumeParser.js      # Parsers & heuristics
-│   │   │   ├── pdfTextExtractor.js  # Local pdf.js extractor
-│   │   │   └── skillNormalizer.js   # Normalization pipeline
-│   │   ├── data/
-│   │   │   ├── roles.v1.json        # 100+ roles catalog
-│   │   │   ├── skills.v1.json       # Skills catalog
-│   │   │   └── interests.v1.json    # Interests catalog
-│   │   └── utils/
-│   │       ├── format.js            # Currency & text formatters
-│   │       └── pdfExport.js         # Report generation utilities
-│   │
-│   └── ui/
-│       └── components/              # Reusable components (e.g. RecommendationList, WhatIfScenarios, CareerPathGraph, RoleAutocomplete)
-│
-├── index.html                       # Base HTML entry
-├── package.json                     # Node dependencies & configs
-├── vite.config.js                   # Vite & PWA building config
-├── tailwind.config.js               # Theme style configurations
-└── README.md                        # This file
-```
-
----
-
-## 🧠 Architecture
-
-### Data Flow
-1. **Input**: User provides skills, interests, target role (via onboarding or manual entry)
-2. **Processing**: Engines compute match rates, projections, readiness scores
-3. **Storage**: All results persist in IndexedDB (survives browser restarts)
-4. **Output**: Visualized as interactive dashboards, charts, and actionable cards
-
-### Key Algorithms
-- **Career Projection**: `salary * (1 + effectiveGrowth)^year` where `effectiveGrowth = clamp(growthRate * learningSpeed, 0.10, 0.26)`
-- **Skill Matching**: Case-insensitive set intersection with skill alias normalization
-- **Readiness Score**: Weighted sum of Skill Coverage (40) + Resume Quality (20) + Interest Alignment (10) + Experience (15) + Learning Momentum (15)
-- **Scenario Simulation**: Compares current state, upskilled state (100% match), and best pivot role from dataset
-
----
-
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
-- Node.js 18+
+- Node.js 20.6+ (supports native `.env` loading via `process.loadEnvFile`)
 - npm 9+
 
-### Installation
+### Install
 ```bash
-git clone https://github.com/HACKER-GOD-07/lakshyaved.git
-cd lakshyaved
 npm install
 ```
 
-### Development
+### Configure
+Create a `.env` file in the project root (optional):
+```env
+GEMINI_API_KEY=your_gemini_api_key_here
+```
+*Note: If `GEMINI_API_KEY` is omitted, the application runs normally and the Career AI Assistant automatically uses its built-in offline advisory engine.*
+
+### Run
+Start the development server with live reload:
 ```bash
 npm run dev
 ```
-Open http://localhost:5173
+Open `http://localhost:3000` in your browser.
 
-### Production Build
+### Build
+Create a production build:
 ```bash
 npm run build
-npm run preview
 ```
 
----
+### Other Scripts
+- `npm run lint`: Runs ESLint across the codebase.
+- `npm run validate:data`: Validates consistency across skills, roles, and interests JSON datasets.
+- `npm run preview`: Previews the production Vite build locally on port 3000.
+- `npm start`: Starts the compiled server (`dist/server.cjs`) in production.
 
-## 📊 Dataset
+## Project Structure
 
-The application ships with curated datasets:
-- **100+ career roles** with required skills, salary data (INR), and growth rates
-- **200+ skills** with aliases and categories
-- **50+ interest categories** for personality-career matching
+```
+lakshyaved/
+├── public/
+│   ├── logo.svg                     # Brand favicon and PWA icon
+│   └── vite.svg
+├── scripts/
+│   └── validate-datasets.js         # Dataset integrity and mapping validator
+├── src/
+│   ├── app/
+│   │   ├── layout/                  # Shell, Sidebar, and App navigation
+│   │   └── pages/                   # Route views (CareerSimulator, SkillGap, CareerAssistant, etc.)
+│   ├── core/
+│   │   ├── context/                 # AuthContext and ThemeContext providers
+│   │   ├── data/                    # JSON datasets (roles, skills, interests, learningResources)
+│   │   ├── db/                      # Dexie schema (db.js) and data repository access (repo.js)
+│   │   ├── logic/                   # Career, skill, readiness, roadmap, and scenario engines
+│   │   ├── parsing/                 # Client-side PDF extractor, resume parser, and skill normalizer
+│   │   └── utils/                   # Formatters and PDF export utilities
+│   ├── ui/
+│   │   └── components/              # Reusable UI widgets, charts, meters, and modals
+│   ├── App.jsx                      # App root component and route switch
+│   ├── index.css                    # Tailwind CSS imports and custom component styles
+│   └── main.jsx                     # Browser DOM mounting entry
+├── index.html                       # Single-page application template
+├── package.json                     # Project manifest, dependencies, and npm scripts
+├── server.ts                        # Express server and Gemini AI proxy with offline fallbacks
+└── vite.config.js                   # Vite and VitePWA service worker configuration
+```
 
-> Salary data is approximate and based on 2025 Indian industry averages. Use as directional guidance only.
+## Data Sources
 
----
+All compensation figures, role requirements, skill mappings, and demand levels included in the project datasets are curated reference estimates designed for structured career modeling. Salary figures represent approximate Indian tech sector bands and should be treated as directional benchmarks rather than live market data. Users are encouraged to cross-reference current compensation, leveling criteria, and hiring trends with market sources including AmbitionBox, Glassdoor, Levels.fyi, and active job postings.
 
-## 🔒 Privacy
+## Privacy
 
-- **Zero server communication** — all processing happens in-browser
-- **No analytics or tracking** — no cookies, no telemetry
-- **Data ownership** — export your data anytime as JSON backup
-- Resume content is parsed locally using pdf.js and never uploaded anywhere
+- **Local resume processing:** Resumes are extracted and parsed entirely in-browser via PDF.js; files are never uploaded to any remote server.
+- **Local storage by default:** User profile details, target roles, and skill gap results are saved locally in browser IndexedDB via Dexie.
+- **Controlled AI context:** Chat messages send only the user's prompt and a compact profile snapshot (target role, skill lists, readiness score) to Google Gemini via the local proxy.
+- **Explicit resume sharing:** Resume text is only transmitted to the AI proxy if the user has uploaded a resume and interacts with the AI Assistant.
+- **Local conversation history:** Chat transcripts are stored exclusively in browser `localStorage`.
+- **Complete data ownership:** The Data Manager page allows users to export all stored data as a JSON file, restore previous backups, or wipe all local data immediately.
 
----
+## Contributing
 
-## 📄 License
+Pull requests and issues are welcome. Before submitting any changes, please ensure that all checks pass:
 
-anubhab-updates
- This project was built as a Major Project for academic purposes.
+```bash
+npm run lint
+npm run validate:data
+```
 
+## License
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-This project was built as a Major Project for academic purposes.
-# Update 
- main
+Not yet specified.

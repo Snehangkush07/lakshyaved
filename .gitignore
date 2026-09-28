@@ -30,3 +30,8 @@ dist-ssr
 LAKSHYAVED_TECHNICAL_BLUEPRINT.md
 LAKSHYAVED_DEEP_DIVE_INTERNALS.md
 LAKSHYAVED_GAP_FILL_AUDIT.md
+
+# Backup and temp files
+*.bak
+*.main-backup
+*.orig

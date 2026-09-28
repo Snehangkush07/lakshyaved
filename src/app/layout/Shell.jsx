@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Menu, Sparkles, Sun, Moon, LogIn, LogOut, User, ChevronDown, KeyRound } from 'lucide-react';
+import { Menu, PanelLeftClose, PanelLeftOpen, Sparkles, Sun, Moon, LogIn, LogOut, User, ChevronDown, KeyRound } from 'lucide-react';
 import { Outlet, useLocation, NavLink, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import InstallPwaBanner from '../../ui/components/InstallPwaBanner';
@@ -9,6 +9,7 @@ import { useAuth } from '../../core/context/AuthContext';
 
 export default function Shell() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [collapsed, setCollapsed] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
     const userMenuRef = useRef(null);
 
@@ -53,6 +54,7 @@ export default function Shell() {
             <Sidebar
                 isOpen={sidebarOpen}
                 onClose={() => setSidebarOpen(false)}
+                collapsed={collapsed}
             />
 
             {/* Main Content */}
@@ -63,10 +65,19 @@ export default function Shell() {
                         <button
                             id="sidebar-toggle-btn"
                             onClick={() => setSidebarOpen(!sidebarOpen)}
-                            className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                            className="md:hidden p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
                             aria-label="Toggle navigation menu"
                         >
                             <Menu size={22} />
+                        </button>
+                        <button
+                            id="desktop-sidebar-toggle-btn"
+                            onClick={() => setCollapsed((c) => !c)}
+                            className="hidden md:flex p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                        >
+                            {collapsed ? <PanelLeftOpen size={22} /> : <PanelLeftClose size={22} />}
                         </button>
                         <div>
                             <h1 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">

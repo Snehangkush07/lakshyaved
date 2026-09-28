@@ -1,19 +1,16 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, CheckCircle, AlertTriangle, FileText, Download } from 'lucide-react';
-import { getAllRoles, findRoles } from '../../core/logic/dataStore';
+import { Upload, CheckCircle, AlertTriangle, FileText, Download, ArrowRight } from 'lucide-react';
+import { getAllRoles, findRoles, getAllSkills, findSkills } from '../../core/logic/dataStore';
+import { extractSkillsFromText } from '../../core/parsing/resumeParser';
 import { analyzeSkillGap } from '../../core/logic/skillEngine';
 import { getResume, saveSkillGapResults, getSkillGapResults, getProfile } from '../../core/db/repo';
 import { calculateReadiness } from '../../core/logic/readiness';
-import { generateRecommendations } from '../../core/logic/recommendationEngine';
-import { detectResumeSections } from '../../core/parsing/resumeParser';
 import SkillChip from '../../ui/components/SkillChip';
 import RoadmapCard from '../../ui/components/RoadmapCard';
 import ExportPdfButton from '../../ui/components/ExportPdfButton';
 import RoleAutocomplete from '../../ui/components/RoleAutocomplete';
 import ReadinessMeter from '../../ui/components/ReadinessMeter';
-import RoadmapPlanner from '../../ui/components/RoadmapPlanner';
-import RecommendationList from '../../ui/components/RecommendationList';
 
 const rolesDataset = getAllRoles();
 
@@ -25,6 +22,18 @@ export default function SkillGap() {
     const [loading, setLoading] = useState(false);
     const [errorStatus, setErrorStatus] = useState('');
     const [profileData, setProfileData] = useState(null);
+    const [confirmedSkills, setConfirmedSkills] = useState([]);
+    const [skillQuery, setSkillQuery] = useState('');
+    const [skillError, setSkillError] = useState('');
+    const [skillSuggestions, setSkillSuggestions] = useState([]);
+
+    useEffect(() => {
+        if (resumeText && resumeText.trim()) {
+            setConfirmedSkills(extractSkillsFromText(resumeText, rolesDataset));
+        } else {
+            setConfirmedSkills([]);
+        }
+    }, [resumeText]);
 
     // Initial load
     useEffect(() => {
@@ -42,6 +51,11 @@ export default function SkillGap() {
     }, []);
 
     const handleAnalyze = async () => {
+        if (confirmedSkills.length === 0) {
+            setErrorStatus('Add at least one skill before analyzing.');
+            return;
+        }
+
         if (!resumeText) {
             setErrorStatus('No resume found. Please upload a resume first.');
             return;
@@ -55,7 +69,8 @@ export default function SkillGap() {
                 targetRoleId: targetRole,
                 rolesDataset,
                 resumeText,
-                resumeRawText: resumeText
+                resumeRawText: resumeText,
+                confirmedSkills
             });
 
             setAnalysis(res);
@@ -89,23 +104,6 @@ export default function SkillGap() {
             resumeRawText: resumeText
         });
     }, [targetRole, resumeText, profileData]);
-
-    const resumeSections = useMemo(() => {
-        return resumeText ? detectResumeSections(resumeText) : null;
-    }, [resumeText]);
-
-    const recs = useMemo(() => {
-        if (!analysis || !targetRole) return [];
-        return generateRecommendations({
-            targetRole,
-            rolesDataset,
-            profileSkills: profileData?.skills || [],
-            missingSkills: analysis.missingSkills || [],
-            matchRate: analysis.matchRate || 0,
-            resumeSections,
-            readinessScore: readiness?.total || 0
-        });
-    }, [analysis, targetRole, profileData, resumeSections, readiness]);
 
     return (
         <div className="max-w-4xl mx-auto space-y-6">
@@ -164,6 +162,90 @@ export default function SkillGap() {
                             placeholder="Search for your target role..."
                             searchFn={(query) => findRoles(query)}
                         />
+                    </div>
+
+                    <div className="flex flex-col rounded-xl bg-white dark:bg-[#121a2a] p-4 border border-slate-200 dark:border-slate-800 shadow-sm">
+                        <div className="flex items-center justify-between mb-1">
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Extracted Skills</span>
+                            <button
+                                type="button"
+                                onClick={() => setConfirmedSkills(extractSkillsFromText(resumeText, rolesDataset))}
+                                className="text-[10px] font-bold text-emerald-600 dark:text-[#13ec6d] hover:underline cursor-pointer"
+                            >
+                                Re-parse resume
+                            </button>
+                        </div>
+                        <p className="text-xs text-slate-500 mb-3">Edit before analyzing. Remove wrong skills or add missed ones.</p>
+                        
+                        <div className="flex flex-wrap gap-2 mb-3">
+                            {confirmedSkills.length > 0 ? (
+                                confirmedSkills.map(skill => (
+                                    <span key={skill} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-[#13ec6d]/10 text-emerald-600 dark:text-[#13ec6d] border border-[#13ec6d]/30">
+                                        {skill}
+                                        <button type="button" onClick={() => setConfirmedSkills(prev => prev.filter(s => s !== skill))} className="ml-0.5 text-emerald-500 hover:text-emerald-400 cursor-pointer">×</button>
+                                    </span>
+                                ))
+                            ) : (
+                                <p className="text-xs text-slate-500 italic">No skills extracted yet. Upload a resume or add skills manually.</p>
+                            )}
+                        </div>
+
+                        <div className="relative">
+                            <input 
+                                type="text"
+                                placeholder="Add a skill..."
+                                value={skillQuery}
+                                onChange={(e) => {
+                                    setSkillQuery(e.target.value);
+                                    setSkillSuggestions(findSkills(e.target.value));
+                                    setSkillError('');
+                                }}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        const query = skillQuery.trim().toLowerCase();
+                                        if (!query) return;
+                                        
+                                        const allSkills = getAllSkills();
+                                        const match = allSkills.find(s => s.skillName.toLowerCase() === query);
+                                        
+                                        if (match) {
+                                            if (!confirmedSkills.includes(match.skillName)) {
+                                                setConfirmedSkills(prev => [...prev, match.skillName]);
+                                            }
+                                            setSkillQuery('');
+                                            setSkillSuggestions([]);
+                                            setSkillError('');
+                                        } else {
+                                            setSkillError('Not a known skill');
+                                        }
+                                    }
+                                }}
+                                className="w-full text-sm bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#13ec6d] focus:border-transparent transition-all"
+                            />
+                            {skillSuggestions.length > 0 && (
+                                <div className="absolute z-10 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg overflow-hidden max-h-40 overflow-y-auto">
+                                    {skillSuggestions.slice(0, 5).map(suggestion => (
+                                        <button
+                                            key={suggestion.skillId || suggestion.skillName}
+                                            type="button"
+                                            onClick={() => {
+                                                if (!confirmedSkills.includes(suggestion.skillName)) {
+                                                    setConfirmedSkills(prev => [...prev, suggestion.skillName]);
+                                                }
+                                                setSkillQuery('');
+                                                setSkillSuggestions([]);
+                                                setSkillError('');
+                                            }}
+                                            className="w-full text-left px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer"
+                                        >
+                                            {suggestion.skillName}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        {skillError && <p className="text-xs text-red-500 mt-1">{skillError}</p>}
                     </div>
                     <div className="flex gap-2">
                         <button onClick={handleAnalyze} disabled={loading} className="flex-1 bg-[#13ec6d] text-[#0b0f19] font-bold py-3 rounded-xl shadow-md hover:bg-[#0ea64d] transition-all disabled:opacity-50 cursor-pointer">
@@ -238,14 +320,19 @@ export default function SkillGap() {
                     </div>
                 </div>
 
-                {/* AI Generated Offline Roadmap */}
+                {/* Take Action CTA */}
                 {analysis && targetRole && (
-                    <div className="pt-4 border-t border-slate-200 dark:border-[#1e293b]">
-                        <RoadmapPlanner
-                            targetRole={targetRole}
-                            targetRoleName={rolesDataset.find(r => r.roleId === targetRole)?.roleName}
-                            missingSkills={analysis.missingSkills || []}
-                        />
+                    <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#121a2a] p-6">
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Ready to close these gaps?</h3>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                            Generate your week-by-week study roadmap, project your salary trajectory, and track progress on the Career Simulator.
+                        </p>
+                        <button
+                            onClick={() => navigate('/career')}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#13ec6d] text-slate-900 font-bold hover:bg-[#0ea64d] transition-colors cursor-pointer"
+                        >
+                            Open Career Simulator <ArrowRight size={16} />
+                        </button>
                     </div>
                 )}
 
@@ -266,10 +353,6 @@ export default function SkillGap() {
                             ))}
                         </div>
                     </div>
-                )}
-                {/* Recommendations */}
-                {analysis && targetRole && (
-                    <RecommendationList recs={recs} />
                 )}
             </div>
         </div>

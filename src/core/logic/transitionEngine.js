@@ -6,7 +6,7 @@
 
 const PROFICIENCY_SCORE = { beginner: 0.33, intermediate: 0.66, advanced: 1.0 };
 
-export function analyzeTransitions({ targetRole, rolesDataset, profileSkills = [], skillsWithLevels = [] }) {
+export function analyzeTransitions({ targetRole, rolesDataset, profileSkills = [], skillsWithLevels = [], simulateFutureSkills = true }) {
     if (!targetRole || !rolesDataset) return { nextRoles: [], fromRoles: [] };
 
     const role = rolesDataset.find(r => r.roleId === targetRole);
@@ -16,7 +16,11 @@ export function analyzeTransitions({ targetRole, rolesDataset, profileSkills = [
         ? skillsWithLevels
         : profileSkills.map(s => ({ name: s, level: 'intermediate' }));
 
-    const userSkillsLower = new Set(swl.map(s => s.name.toLowerCase()));
+    const combinedSkills = [
+        ...swl.map(s => s.name.toLowerCase()),
+        ...(simulateFutureSkills ? (role.requiredSkills || []) : []).map(s => s.toLowerCase())
+    ];
+    const userSkillsLower = new Set(combinedSkills);
 
     // Analyze "where can I go next?" transitions
     const nextRoles = (role.transitionTo || [])
@@ -28,11 +32,21 @@ export function analyzeTransitions({ targetRole, rolesDataset, profileSkills = [
             const alreadyHave = required.filter(s => userSkillsLower.has(s.toLowerCase()));
             const needToLearn = required.filter(s => !userSkillsLower.has(s.toLowerCase()));
             const matchPercent = required.length > 0 ? Math.round((alreadyHave.length / required.length) * 100) : 0;
-            const salaryGain = (nextRole.seniorSalaryINR || 0) - (role.seniorSalaryINR || 0);
+            const currentBase = role.baseSalaryINR || 0;
+            const currentSenior = role.seniorSalaryINR || currentBase;
+            const nextBase = nextRole.baseSalaryINR || 0;
+            const nextSenior = nextRole.seniorSalaryINR || nextBase;
+            const currentBlended = (currentBase + currentSenior) / 2;
+            const nextBlended = (nextBase + nextSenior) / 2;
+            const salaryGain = Math.round(nextBlended - currentBlended);
             const difficulty = needToLearn.length <= 2 ? 'low' : needToLearn.length <= 4 ? 'medium' : 'high';
 
             // Transition score: higher = more attractive
-            const transitionScore = Math.round((salaryGain / 100000) / (needToLearn.length + 1));
+            const transitionScore = Math.round(
+                matchPercent * 0.5
+                + (salaryGain / 100000) * 0.3
+                - needToLearn.length * 3
+            );
 
             return {
                 roleId: nextRole.roleId,

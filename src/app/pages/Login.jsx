@@ -5,6 +5,7 @@ import {
     Eye, EyeOff, CheckCircle2, ShieldCheck, Sun, Moon, Zap
 } from 'lucide-react';
 import Login3DScene from '../../ui/components/Login3DScene';
+import LakshyavedLogo from '../../ui/components/LakshyavedLogo';
 import { useAuth, DEMO_USERS } from '../../core/context/AuthContext';
 import { useTheme } from '../../core/context/ThemeContext';
 import { getAllRoles } from '../../core/logic/dataStore';
@@ -160,17 +161,7 @@ export default function Login() {
 
             {/* Top Bar Header with Brand & Theme Toggle */}
             <header className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-6 sm:px-10 py-5">
-                <div className="flex items-center gap-2.5">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#13ec6d]/15 border border-[#13ec6d]/40 text-[#13ec6d] shadow-[0_0_15px_rgba(19,236,109,0.3)]">
-                        <Hexagon size={22} className="stroke-[2.5]" />
-                    </div>
-                    <div>
-                        <span className="text-lg font-black tracking-wider text-white">LAKSHYAVED</span>
-                        <span className="hidden sm:inline-block ml-2 text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-full bg-[#13ec6d]/10 text-[#13ec6d] border border-[#13ec6d]/30">
-                            Career Nexus
-                        </span>
-                    </div>
-                </div>
+                <LakshyavedLogo size={36} showText={true} showSubtitle={true} textClassName="text-xl font-black" />
 
                 <div className="flex items-center gap-3">
                     {/* Theme Mode Toggle Button */}

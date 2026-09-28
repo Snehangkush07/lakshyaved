@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Hexagon, ArrowRight, ArrowLeft, CheckCircle, User, Briefcase, GraduationCap, Sparkles } from 'lucide-react';
+import LakshyavedLogo from '../../ui/components/LakshyavedLogo';
 import { saveOnboardingProfile } from '../../core/db/repo';
 import { findRoles, findSkills } from '../../core/logic/dataStore';
 import RoleAutocomplete from '../../ui/components/RoleAutocomplete';
@@ -101,11 +102,11 @@ export default function Onboarding({ onComplete }) {
                     {/* Step 0: Welcome */}
                     {step === 0 && (
                         <div className="text-center space-y-6">
-                            <div className="text-[#13ec6d] mx-auto w-fit">
-                                <Hexagon size={64} className="drop-shadow-[0_0_20px_rgba(19,236,109,0.4)]" />
+                            <div className="mx-auto w-fit">
+                                <LakshyavedLogo size={72} showText={true} showSubtitle={true} textClassName="text-3xl font-extrabold" className="flex-col text-center" />
                             </div>
-                            <h1 className="text-3xl font-extrabold text-white tracking-tight">
-                                Welcome to <span className="text-[#13ec6d]">LAKSHYAVED</span>
+                            <h1 className="text-2xl font-bold text-white tracking-tight">
+                                Welcome to Career Skills Growth
                             </h1>
                             <p className="text-slate-400 leading-relaxed max-w-sm mx-auto">
                                 Your offline-first career planning companion. Let's personalize your experience in under a minute.

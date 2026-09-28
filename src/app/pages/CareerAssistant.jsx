@@ -1,59 +1,39 @@
 import { useState, useEffect, useRef } from 'react';
 import { 
-    Sparkles, Send, Trash2, RotateCcw, Bot, User, 
-    Copy, Check, Compass, 
-    BookOpen, Briefcase, Award, Zap, RefreshCw
+    Sparkles, Send, Square, Trash2, Bot, User, 
+    Copy, Check, RefreshCw
 } from 'lucide-react';
 import Markdown from 'react-markdown';
-import { getProfile, getSkillGapResults } from '../../core/db/repo';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { getProfile, getResume, getSkillGapResults, getRoadmapPlanByRole, getRoadmapProgress } from '../../core/db/repo';
 import { getAllRoles } from '../../core/logic/dataStore';
-
-const SUGGESTED_QUESTIONS = [
-    {
-        icon: Briefcase,
-        label: "Coding Interviews",
-        query: "How to prepare for coding interviews? What problem patterns should I focus on?"
-    },
-    {
-        icon: Compass,
-        label: "Full Stack Roadmap",
-        query: "What is the recommended career path and milestone roadmap for a Full Stack Developer?"
-    },
-    {
-        icon: Award,
-        label: "Resume Building",
-        query: "What are the best resume building tips and formulas to pass ATS scans and impress engineering managers?"
-    },
-    {
-        icon: Zap,
-        label: "Skill Gap Advice",
-        query: "Based on my current Lakshyaved profile, what high-priority skills should I learn next to improve my readiness?"
-    },
-    {
-        icon: BookOpen,
-        label: "Behavioral Interviews",
-        query: "How should I structure answers using the STAR method for behavioral tech interview questions?"
-    }
-];
+import { calculateReadiness } from '../../core/logic/readiness';
 
 const INITIAL_GREETING = {
     id: 'welcome-msg',
     role: 'assistant',
-    content: `👋 **Welcome to the Lakshyaved Career AI Assistant!**
+    content: `👋 Hi! I'm your Lakshyaved career assistant.
 
-I am your dedicated career mentor, interview coach, and technical growth strategist. I can help you with:
+I can help with:
+- Your roadmap — what to learn next
+- Skill gaps — how to close them
+- Interviews — coding, system design, behavioral
+- Resume — how to sharpen it
+- Roles & salaries — realistic expectations
 
-- 🎯 **Tailored Roadmaps:** Step-by-step pathways across software engineering, cloud, data, and management.
-- 💡 **Interview Prep:** Data structure patterns, system design fundamentals, and behavioral STAR stories.
-- 📄 **Resume Optimization:** Quantifiable metric formulas, ATS guidelines, and portfolio advice.
-- 📊 **Contextual Guidance:** Connected with your Lakshyaved profile to bridge missing skills and target roles.
-
-Choose a suggested topic below or type any career question to get started!`,
+Ask me anything, or tap a suggestion below.`,
     timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     source: 'system'
 };
 
 const STORAGE_KEY = 'lakshyaved_ai_chat_history_v1';
+
+const QUICK_ACTIONS = [
+    { label: '📚 Study plan', query: 'What should I study this week?' },
+    { label: '🎯 Skill gaps', query: 'What are my top 3 skill gaps?' },
+    { label: '💼 Interview prep', query: 'How should I prepare for an interview?' },
+    { label: '📄 Resume tips', query: 'Review my resume and tell me what to improve.' },
+];
 
 function generateClientFallback(query, context) {
     const q = (query || '').toLowerCase();
@@ -141,6 +121,9 @@ function createChatMessage({ role, content, source = '', isFallback = false, ori
 }
 
 export default function CareerAssistant() {
+    const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const hasAutoSentRef = useRef(false);
     const [messages, setMessages] = useState(() => {
         try {
             const saved = localStorage.getItem(STORAGE_KEY);
@@ -156,16 +139,28 @@ export default function CareerAssistant() {
 
     const [inputQuery, setInputQuery] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [typingSlow, setTypingSlow] = useState(false);
+    const typingTimeoutRef = useRef(null);
     const [copiedIndex, setCopiedIndex] = useState(null);
+    // eslint-disable-next-line no-unused-vars
     const [useProfileContext, setUseProfileContext] = useState(true);
     const [profileContext, setProfileContext] = useState(null);
-    const [apiHealth, setApiHealth] = useState({ aiConfigured: false, primaryModel: 'gemini-3.8-flash' });
+    const [apiHealth, setApiHealth] = useState({ aiConfigured: false, primaryModel: 'Gemini 2.5 Flash' });
+    const [aiSource, setAiSource] = useState('unknown');
     const [highDemandNotice, setHighDemandNotice] = useState(null);
     const [showClearConfirm, setShowClearConfirm] = useState(false);
     const [clearFeedback, setClearFeedback] = useState(null);
 
     const messagesEndRef = useRef(null);
     const inputRef = useRef(null);
+    const abortControllerRef = useRef(null);
+    const stoppedByUserRef = useRef(false);
+
+    useEffect(() => {
+        return () => {
+            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+        };
+    }, []);
 
     // Save chat history to localStorage
     useEffect(() => {
@@ -176,39 +171,124 @@ export default function CareerAssistant() {
         }
     }, [messages]);
 
+    const fetchContext = async () => {
+        try {
+            const [prof, gap, resume] = await Promise.all([
+                getProfile().catch(() => null),
+                getSkillGapResults().catch(() => null),
+                getResume().catch(() => null)
+            ]);
+
+            const rawResume = typeof resume?.rawText === 'string' ? resume.rawText : '';
+            const resumeText = rawResume.slice(0, 20000);
+
+            const targetRole = prof?.targetRole || gap?.targetRole || 'Software Engineer';
+            let plan = await getRoadmapPlanByRole(targetRole, 4).catch(() => null);
+            if (!plan) plan = await getRoadmapPlanByRole(targetRole, 8).catch(() => null);
+            if (!plan) plan = await getRoadmapPlanByRole(targetRole, 12).catch(() => null);
+            let progress = null;
+            if (plan) {
+                progress = await getRoadmapProgress(plan.id).catch(() => null);
+            }
+
+            let nextTask = null;
+            if (plan) {
+                const completed = progress?.completedTaskIds || [];
+                for (const week of (plan.weeks || [])) {
+                    for (const task of (week.tasks || [])) {
+                        if (!completed.includes(task.id)) {
+                            nextTask = task.title || task.text;
+                            break;
+                        }
+                    }
+                    if (nextTask) break;
+                }
+            }
+
+            let computedMatchedSkills = null;
+            let computedOtherSkills = [];
+            let computedMissingSkills = null;
+            let computedReadiness = null;
+
+            if (prof && targetRole) {
+                const allRoles = getAllRoles();
+                const matchedRole = allRoles.find(r => r.roleName === targetRole || r.roleId === targetRole);
+                if (matchedRole) {
+                    const reqSkills = matchedRole.requiredSkills || [];
+                    const userSkills = prof.skills || [];
+                    
+                    computedMatchedSkills = userSkills.filter(
+                        us => reqSkills.some(rs => rs.toLowerCase() === us.toLowerCase())
+                    );
+
+                    computedOtherSkills = userSkills.filter(
+                        us => !reqSkills.some(rs => rs.toLowerCase() === us.toLowerCase())
+                    );
+
+                    computedMissingSkills = reqSkills.filter(
+                        rs => !userSkills.some(us => us.toLowerCase() === rs.toLowerCase())
+                    );
+                    
+                    const readinessResult = calculateReadiness({
+                        targetRole: matchedRole.roleId,
+                        rolesDataset: allRoles,
+                        profileSkills: userSkills,
+                        profileInterests: prof.interests || []
+                    });
+                    
+                    if (readinessResult) {
+                        computedReadiness = readinessResult.total;
+                    }
+                }
+            }
+
+            const finalMatchedSkills = computedMatchedSkills !== null ? computedMatchedSkills : (gap?.matchedSkills ?? []);
+            const finalOtherSkills = computedOtherSkills;
+            const finalMissingSkills = computedMissingSkills !== null ? computedMissingSkills : (gap?.missingSkills ?? []);
+            
+            let finalReadiness = computedReadiness;
+            if (finalReadiness === null) {
+                if (gap?.matchedSkills?.length) {
+                    finalReadiness = Math.round(((gap?.matchedSkills?.length ?? 0) / Math.max(1, (gap?.matchedSkills?.length ?? 0) + (gap?.missingSkills?.length ?? 0))) * 100);
+                } else {
+                    finalReadiness = null;
+                }
+            }
+
+            const ctx = {
+                targetRole: targetRole,
+                skills: prof?.skills ?? gap?.matchedSkills ?? [],
+                matchedSkills: finalMatchedSkills,
+                otherSkills: finalOtherSkills,
+                interests: prof?.interests ?? [],
+                missingSkills: finalMissingSkills,
+                readinessScore: finalReadiness,
+                hasPlan: !!plan,
+                nextRoadmapTask: nextTask,
+                resumeText: resumeText
+            };
+            setProfileContext(ctx);
+        } catch (err) {
+            console.error('Failed to load Lakshyaved profile context:', err);
+        }
+    };
+
     // Load profile context from Dexie
     useEffect(() => {
-        async function fetchContext() {
-            try {
-                const [prof, gap] = await Promise.all([
-                    getProfile().catch(() => null),
-                    getSkillGapResults().catch(() => null)
-                ]);
-
-                const ctx = {
-                    targetRole: prof?.targetRole || gap?.targetRole || 'Software Engineer',
-                    skills: prof?.skills || gap?.matchedSkills || [],
-                    interests: prof?.interests || [],
-                    missingSkills: gap?.missingSkills || [],
-                    readinessScore: gap?.matchedSkills?.length 
-                        ? Math.round((gap.matchedSkills.length / Math.max(1, gap.matchedSkills.length + (gap.missingSkills?.length || 0))) * 100)
-                        : null
-                };
-                setProfileContext(ctx);
-            } catch (err) {
-                console.error('Failed to load Lakshyaved profile context:', err);
-            }
-        }
-
         async function checkHealth() {
             try {
                 const res = await fetch('/api/health');
                 if (res.ok) {
                     const data = await res.json();
                     setApiHealth(data);
+                    if (!data.aiConfigured) {
+                        setAiSource('offline');
+                    }
+                } else {
+                    setAiSource('offline');
                 }
             } catch {
-                // Ignore failure in health check
+                setAiSource('offline');
             }
         }
 
@@ -218,17 +298,46 @@ export default function CareerAssistant() {
 
     // Auto-scroll to bottom
     const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'nearest' });
     };
 
     useEffect(() => {
         scrollToBottom();
     }, [messages, isLoading]);
 
+    const safeAppendToLocalStorage = (msg) => {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            let currentSaved = [];
+            if (saved) {
+                try {
+                    currentSaved = JSON.parse(saved);
+                } catch (parseErr) {
+                    console.warn('Failed to parse chat history from localStorage', parseErr);
+                }
+            }
+            if (!Array.isArray(currentSaved)) currentSaved = [];
+            if (!currentSaved.some(m => m.id === msg.id)) {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify([...currentSaved, msg]));
+            }
+        } catch (storageErr) {
+            console.error('Failed to append message to localStorage', storageErr);
+        }
+    };
+
+    const handleStop = () => {
+        stoppedByUserRef.current = true;
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+            abortControllerRef.current = null;
+        }
+    };
+
     const handleSendMessage = async (textToSend, isRetry = false) => {
         const text = (textToSend || inputQuery).trim();
         if (!text || isLoading) return;
 
+        stoppedByUserRef.current = false;
         setHighDemandNotice(null);
 
         let updatedMessages = messages;
@@ -240,11 +349,23 @@ export default function CareerAssistant() {
             updatedMessages = [...messages, userMsg];
             setMessages(updatedMessages);
             setInputQuery('');
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedMessages));
+            } catch (e) {
+                console.error('Failed to save chat history to localStorage', e);
+            }
         }
 
         setIsLoading(true);
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+        setTypingSlow(false);
+        typingTimeoutRef.current = setTimeout(() => {
+            setTypingSlow(true);
+        }, 5000);
 
         try {
+            abortControllerRef.current = new AbortController();
+
             const apiPayload = {
                 messages: updatedMessages
                     .filter(m => m.role === 'user' || m.role === 'assistant')
@@ -255,16 +376,16 @@ export default function CareerAssistant() {
             const res = await fetch('/api/career-assistant/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(apiPayload)
+                body: JSON.stringify(apiPayload),
+                signal: abortControllerRef.current.signal
             });
 
             if (!res.ok) {
-                // Parse error cleanly without throwing raw JSON
+                setAiSource('offline');
                 const errData = await res.json().catch(() => ({}));
                 const rawMsg = String(errData.error || res.statusText || '');
                 const isHighDemand = res.status === 503 || res.status === 429 || rawMsg.includes('503') || rawMsg.includes('UNAVAILABLE') || rawMsg.includes('high demand');
                 
-                // Fallback to client-side offline career recommendations
                 const offlineContent = generateClientFallback(text, profileContext);
                 const assistantMsg = createChatMessage({
                     role: 'assistant',
@@ -277,12 +398,19 @@ export default function CareerAssistant() {
                         : "Showing recommendations from Lakshyaved offline knowledge base."
                 });
 
+                safeAppendToLocalStorage(assistantMsg);
                 setHighDemandNotice("AI servers are experiencing high traffic (503). Active in offline recommendation mode.");
                 setMessages(prev => [...prev, assistantMsg]);
                 return;
             }
 
             const data = await res.json();
+            if (data.source && data.source.startsWith('gemini')) {
+                setAiSource('live');
+            } else if (data.source === 'offline-fallback' || data.source === 'built-in') {
+                setAiSource('offline');
+            }
+
             if (data.isFallback) {
                 setHighDemandNotice("Live AI temporarily unavailable due to high demand. Showing offline recommendations.");
             }
@@ -290,16 +418,37 @@ export default function CareerAssistant() {
             const assistantMsg = createChatMessage({
                 role: 'assistant',
                 content: data.reply || "I couldn't formulate a response. Please try asking again.",
-                source: data.source || 'gemini-3.8-flash',
+                source: data.source || 'gemini-2.5-flash',
                 isFallback: Boolean(data.isFallback),
                 originalQuery: text,
                 notice: data.notice
             });
 
+            safeAppendToLocalStorage(assistantMsg);
             setMessages(prev => [...prev, assistantMsg]);
         } catch (err) {
+            if (err?.name === 'AbortError') {
+                if (stoppedByUserRef.current) {
+                    stoppedByUserRef.current = false;
+                    setMessages(prev => {
+                        const lastIdx = prev.length - 1;
+                        if (lastIdx >= 0 && prev[lastIdx].role === 'user') {
+                            const updated = [...prev];
+                            updated[lastIdx] = { ...updated[lastIdx], stopped: true };
+                            try {
+                                localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+                            } catch (e) {
+                                console.error('Failed to save chat history', e);
+                            }
+                            return updated;
+                        }
+                        return prev;
+                    });
+                }
+                return;
+            }
             console.warn('Network or server error in Career Assistant:', err);
-            // Fallback to client-side local data store
+            setAiSource('offline');
             const offlineContent = generateClientFallback(text, profileContext);
             const assistantMsg = createChatMessage({
                 role: 'assistant',
@@ -310,9 +459,16 @@ export default function CareerAssistant() {
                 notice: "Live AI is temporarily unavailable. Showing recommendations from Lakshyaved's local career data store."
             });
 
+            safeAppendToLocalStorage(assistantMsg);
             setHighDemandNotice("Live AI is temporarily unavailable. Using offline recommendations.");
             setMessages(prev => [...prev, assistantMsg]);
         } finally {
+            abortControllerRef.current = null;
+            if (typingTimeoutRef.current) {
+                clearTimeout(typingTimeoutRef.current);
+                typingTimeoutRef.current = null;
+            }
+            setTypingSlow(false);
             setIsLoading(false);
             setTimeout(() => {
                 inputRef.current?.focus();
@@ -320,7 +476,22 @@ export default function CareerAssistant() {
         }
     };
 
-    // Close clear confirmation modal on Escape key
+    // Auto-send prompt when navigated with ?prompt=...
+    useEffect(() => {
+        const promptParam = searchParams.get('prompt');
+        if (promptParam && promptParam.trim()) {
+            if (!isLoading && !hasAutoSentRef.current) {
+                hasAutoSentRef.current = true;
+                const cleanPrompt = promptParam.trim();
+                setSearchParams({}, { replace: true });
+                handleSendMessage(cleanPrompt);
+            }
+        } else {
+            hasAutoSentRef.current = false;
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchParams, isLoading]);
+
     useEffect(() => {
         if (!showClearConfirm) return;
         const handleEsc = (e) => {
@@ -333,7 +504,9 @@ export default function CareerAssistant() {
     const handleKeyDown = (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            handleSendMessage();
+            if (!isLoading) {
+                handleSendMessage();
+            }
         }
     };
 
@@ -371,12 +544,27 @@ export default function CareerAssistant() {
         setTimeout(() => setCopiedIndex(null), 2000);
     };
 
+    const getSuggestedQuestions = () => {
+        const qs = [];
+        if (profileContext?.missingSkills?.length > 0) {
+            qs.push("What's my biggest skill gap?");
+        }
+        if (profileContext?.hasPlan) {
+            qs.push("What should I study this week?");
+        }
+        if (profileContext?.targetRole) {
+            qs.push(`How do I prepare for a ${profileContext.targetRole} interview?`);
+        }
+        qs.push("Review my resume", "Am I ready to apply for jobs?", "How do I negotiate my first salary?");
+        return qs;
+    };
+
     return (
-        <div className="max-w-6xl mx-auto flex flex-col h-[calc(100vh-6.5rem)] space-y-4">
+        <div className="h-full flex flex-col overflow-hidden gap-4 max-w-7xl mx-auto w-full">
             {/* Top Bar / Header Card */}
-            <div className="bg-white dark:bg-[#121a2a] rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-[#1e293b] shadow-lg flex flex-wrap items-center justify-between gap-4">
+            <div className="bg-white dark:bg-[#121a2a] rounded-2xl p-4 border border-slate-200 dark:border-[#1e293b] shadow-lg flex flex-wrap items-center justify-between gap-4 shrink-0">
                 <div className="flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#13ec6d]/10 border border-[#13ec6d]/30 text-[#13ec6d] shadow-[0_0_12px_rgba(19,236,109,0.15)]">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#13ec6d]/10 border border-[#13ec6d]/30 text-[#13ec6d]">
                         <Sparkles size={22} />
                     </div>
                     <div>
@@ -384,42 +572,35 @@ export default function CareerAssistant() {
                             <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
                                 Career AI Assistant
                             </h2>
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-[#13ec6d]/10 text-[#13ec6d] border border-[#13ec6d]/30">
-                                {apiHealth.aiConfigured ? 'Gemini 2.5 Flash • Auto-Retry' : 'Lakshyaved Career Engine'}
-                            </span>
+                            {aiSource === 'live' && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-[#13ec6d]/10 text-[#13ec6d] border border-[#13ec6d]/30 uppercase tracking-wider">
+                                    Live
+                                </span>
+                            )}
+                            {aiSource === 'offline' && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 uppercase tracking-wider">
+                                    Offline
+                                </span>
+                            )}
+                            {aiSource === 'unknown' && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 uppercase tracking-wider">
+                                    …
+                                </span>
+                            )}
                         </div>
                         <p className="text-xs text-slate-500 dark:text-slate-400">
-                            Actionable career roadmaps, interview preparation, and resume guidance
+                            {apiHealth.primaryModel || "Gemini 2.5 Flash"}
                         </p>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-3 ml-auto">
-                    {/* Context Badge / Toggle */}
-                    {profileContext && (
-                        <button
-                            onClick={() => setUseProfileContext(!useProfileContext)}
-                            title="Toggle profile synchronization with AI"
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
-                                useProfileContext
-                                    ? 'bg-[#13ec6d]/10 text-[#13ec6d] border-[#13ec6d]/30 hover:bg-[#13ec6d]/20'
-                                    : 'bg-slate-100 dark:bg-white/5 text-slate-400 border-slate-200 dark:border-white/10 hover:text-white'
-                            }`}
-                        >
-                            <span className={`h-2 w-2 rounded-full ${useProfileContext ? 'bg-[#13ec6d]' : 'bg-slate-400'}`} />
-                            <span className="truncate max-w-[160px] sm:max-w-[220px]">
-                                {useProfileContext ? `Profile: ${profileContext.targetRole}` : 'Profile Sync Off'}
-                            </span>
-                        </button>
-                    )}
-
                     {/* Clear history button */}
                     <button
                         id="clear-conversation-button"
                         onClick={handleClearHistory}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-500/10 border border-slate-200 dark:border-white/10 transition-colors cursor-pointer"
                         title="Clear conversation"
-                        aria-label="Clear conversation history"
                     >
                         <Trash2 size={15} />
                         <span className="hidden sm:inline">Clear Chat</span>
@@ -429,242 +610,326 @@ export default function CareerAssistant() {
 
             {/* Clear Success Feedback Banner */}
             {clearFeedback && (
-                <div 
-                    id="clear-success-toast"
-                    className="bg-[#13ec6d]/10 border border-[#13ec6d]/30 text-[#13ec6d] px-4 py-2.5 rounded-xl text-xs flex items-center justify-between shadow-sm animate-in fade-in duration-150"
-                >
+                <div className="bg-[#13ec6d]/10 border border-[#13ec6d]/30 text-[#13ec6d] px-4 py-2.5 rounded-xl text-xs flex items-center justify-between shadow-sm shrink-0">
                     <div className="flex items-center gap-2">
                         <Check size={16} />
                         <span className="font-semibold">{clearFeedback}</span>
                     </div>
-                    <button
-                        onClick={() => setClearFeedback(null)}
-                        className="text-[#13ec6d] hover:opacity-75 cursor-pointer font-bold text-xs"
-                    >
-                        ✕
-                    </button>
+                    <button onClick={() => setClearFeedback(null)} className="text-[#13ec6d] hover:opacity-75 cursor-pointer font-bold text-xs">✕</button>
                 </div>
             )}
 
             {/* High demand notification banner */}
             {highDemandNotice && (
-                <div className="bg-amber-500/10 border border-amber-500/20 text-amber-300 px-4 py-2.5 rounded-xl text-xs flex items-center justify-between gap-2 shadow-sm">
+                <div className="bg-amber-500/10 border border-amber-500/20 text-amber-500 dark:text-amber-300 px-4 py-2.5 rounded-xl text-xs flex items-center justify-between gap-2 shadow-sm shrink-0">
                     <div className="flex items-center gap-2">
                         <span className="h-2 w-2 rounded-full bg-amber-400 animate-ping" />
                         <span>{highDemandNotice}</span>
                     </div>
-                    <button 
-                        onClick={() => setHighDemandNotice(null)}
-                        className="text-amber-400 hover:text-amber-200 font-bold ml-2 cursor-pointer text-sm"
-                    >
-                        ✕
-                    </button>
+                    <button onClick={() => setHighDemandNotice(null)} className="text-amber-500 dark:text-amber-400 hover:opacity-75 font-bold ml-2 cursor-pointer text-sm">✕</button>
                 </div>
             )}
 
-            {/* Chat Container */}
-            <div className="flex-1 bg-white dark:bg-[#121a2a] rounded-2xl border border-slate-200 dark:border-[#1e293b] shadow-lg flex flex-col overflow-hidden">
-                {/* Messages Viewport */}
-                <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 scroll-smooth">
-                    {messages.map((msg, index) => {
-                        const isUser = msg.role === 'user';
-                        return (
-                            <div
-                                key={msg.id || index}
-                                className={`flex gap-3 sm:gap-4 ${isUser ? 'justify-end' : 'justify-start'}`}
-                            >
-                                {!isUser && (
-                                    <div className="flex-shrink-0 h-9 w-9 rounded-xl bg-[#13ec6d]/10 border border-[#13ec6d]/30 text-[#13ec6d] flex items-center justify-center mt-1 shadow-sm">
-                                        <Bot size={18} />
-                                    </div>
-                                )}
-
-                                <div className={`flex flex-col max-w-[90%] sm:max-w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
-                                    {/* Author & Timestamp */}
-                                    <div className="flex items-center gap-2 mb-1 px-1 text-[11px] text-slate-400">
-                                        <span>{isUser ? 'You' : 'Lakshyaved AI Mentor'}</span>
-                                        <span>•</span>
-                                        <span>{msg.timestamp}</span>
-                                        {!isUser && msg.source && (
-                                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-white/5 text-slate-400 border border-white/5">
-                                                {msg.source}
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    {/* Bubble Content */}
-                                    <div
-                                        className={`relative group rounded-2xl px-5 py-4 text-sm leading-relaxed ${
-                                            isUser
-                                                ? 'bg-[#13ec6d] text-[#0b0f19] font-medium shadow-md rounded-br-none'
-                                                : 'bg-[#f8fafc] dark:bg-[#0b0f19]/70 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-[#1e293b] shadow-sm rounded-bl-none'
-                                        }`}
-                                    >
-                                        {isUser ? (
-                                            <p className="whitespace-pre-wrap">{msg.content}</p>
-                                        ) : (
-                                            <div className="career-ai-markdown space-y-3 prose dark:prose-invert max-w-none text-slate-800 dark:text-slate-200">
-                                                <Markdown>{msg.content}</Markdown>
-                                            </div>
-                                        )}
-
-                                        {/* Copy button for assistant responses */}
+            {/* Main Content Grid */}
+            <div className="flex-1 min-h-0 grid lg:grid-cols-3 gap-6 min-w-0">
+                
+                {/* Chat Column */}
+                <div className="lg:col-span-2 flex flex-col h-full min-h-0 overflow-hidden bg-white dark:bg-[#121a2a] rounded-2xl border border-slate-200 dark:border-[#1e293b] shadow-lg min-w-0">
+                    {/* Messages Viewport */}
+                    <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 min-w-0">
+                        <div className="max-w-5xl mx-auto w-full px-4 md:px-6 py-4 sm:py-6 space-y-6 min-w-0">
+                            {messages.map((msg, index) => {
+                                const isUser = msg.role === 'user';
+                                return (
+                                    <div key={msg.id || index} className={`flex gap-3 sm:gap-4 min-w-0 ${isUser ? 'justify-end' : 'justify-start'}`}>
                                         {!isUser && (
-                                            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                                                <button
-                                                    onClick={() => handleCopy(msg.content, index)}
-                                                    className="p-1.5 rounded-lg bg-slate-200 dark:bg-[#1e293b] text-slate-600 dark:text-slate-400 hover:text-white transition-colors cursor-pointer"
-                                                    title="Copy response"
-                                                >
-                                                    {copiedIndex === index ? (
-                                                        <Check size={14} className="text-[#13ec6d]" />
-                                                    ) : (
-                                                        <Copy size={14} />
-                                                    )}
-                                                </button>
+                                            <div className="flex-shrink-0 h-8 w-8 rounded-full bg-slate-800 text-white flex items-center justify-center font-bold text-xs mt-1">
+                                                L
                                             </div>
                                         )}
-                                    </div>
 
-                                    {/* Notice & Retry Action for Fallback */}
-                                    {!isUser && msg.isFallback && (
-                                        <div className="flex items-center gap-2 mt-1.5 px-1 flex-wrap">
-                                            {msg.notice && (
-                                                <span className="text-[11px] text-amber-400/90 italic">
-                                                    ℹ️ {msg.notice}
+                                        <div className={`flex flex-col min-w-0 ${isUser ? 'items-end max-w-[80%]' : 'items-start max-w-[92%]'}`}>
+                                            <div
+                                                className={`relative group rounded-2xl px-4 py-3 text-sm leading-relaxed max-w-full break-words overflow-hidden ${
+                                                    isUser
+                                                        ? 'bg-[#13ec6d]/15 text-emerald-900 dark:text-emerald-200'
+                                                        : 'bg-white dark:bg-[#121a2a] border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200'
+                                                }`}
+                                            >
+                                                {isUser ? (
+                                                    <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                                                ) : (
+                                                    <div className="career-ai-markdown space-y-3 prose dark:prose-invert max-w-none min-w-0 break-words">
+                                                        <Markdown>{msg.content}</Markdown>
+                                                    </div>
+                                                )}
+
+                                                {!isUser && (
+                                                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                                                        <button
+                                                            onClick={() => handleCopy(msg.content, index)}
+                                                            className="p-1.5 rounded-lg bg-slate-200 dark:bg-[#1e293b] text-slate-600 dark:text-slate-400 hover:text-white transition-colors cursor-pointer"
+                                                            title="Copy response"
+                                                        >
+                                                            {copiedIndex === index ? <Check size={14} className="text-[#13ec6d]" /> : <Copy size={14} />}
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {isUser && msg.stopped && (
+                                                <span className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 px-1">
+                                                    Stopped.
                                                 </span>
                                             )}
-                                            {msg.originalQuery && (
-                                                <button
-                                                    onClick={() => handleSendMessage(msg.originalQuery, true)}
-                                                    disabled={isLoading}
-                                                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#13ec6d] hover:underline cursor-pointer bg-[#13ec6d]/10 px-2 py-0.5 rounded border border-[#13ec6d]/20"
-                                                >
-                                                    <RefreshCw size={11} className={isLoading ? 'animate-spin' : ''} />
-                                                    Retry with Live AI
-                                                </button>
+
+                                            {/* Notice & Retry Action for Fallback */}
+                                            {!isUser && msg.isFallback && (
+                                                <div className="flex items-center gap-2 mt-1.5 px-1 flex-wrap">
+                                                    <span className="text-[11px] text-amber-500 dark:text-amber-400 font-medium">
+                                                        ⚠️ Offline mode — using built-in knowledge, not live AI.
+                                                    </span>
+                                                    {msg.notice && <span className="text-[11px] text-amber-500/80 dark:text-amber-400/80 italic">({msg.notice})</span>}
+                                                    {msg.originalQuery && (
+                                                        <button
+                                                            onClick={() => handleSendMessage(msg.originalQuery, true)}
+                                                            disabled={isLoading}
+                                                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#13ec6d] hover:underline cursor-pointer bg-[#13ec6d]/10 px-2 py-0.5 rounded border border-[#13ec6d]/20"
+                                                        >
+                                                            <RefreshCw size={11} className={isLoading ? 'animate-spin' : ''} />
+                                                            Retry with Live AI
+                                                        </button>
+                                                    )}
+                                                </div>
                                             )}
                                         </div>
-                                    )}
-
-                                    {!isUser && !msg.isFallback && msg.notice && (
-                                        <p className="text-[11px] text-slate-500 mt-1.5 px-1 italic">
-                                            ℹ️ {msg.notice}
-                                        </p>
-                                    )}
-                                </div>
-
-                                {isUser && (
-                                    <div className="flex-shrink-0 h-9 w-9 rounded-xl bg-slate-200 dark:bg-[#1e293b] text-slate-700 dark:text-slate-300 flex items-center justify-center mt-1 shadow-sm">
-                                        <User size={18} />
                                     </div>
-                                )}
-                            </div>
-                        );
-                    })}
+                                );
+                            })}
 
-                    {/* Smooth Loading Indicator */}
-                    {isLoading && (
-                        <div className="flex gap-3 sm:gap-4 items-start">
-                            <div className="flex-shrink-0 h-9 w-9 rounded-xl bg-[#13ec6d]/10 border border-[#13ec6d]/30 text-[#13ec6d] flex items-center justify-center mt-1 animate-pulse">
-                                <Bot size={18} />
-                            </div>
-                            <div className="bg-[#f8fafc] dark:bg-[#0b0f19]/70 border border-slate-200 dark:border-[#1e293b] rounded-2xl rounded-bl-none px-5 py-4 shadow-sm">
-                                <div className="flex items-center gap-2">
-                                    <div className="flex items-center gap-1.5">
-                                        <span className="h-2 w-2 rounded-full bg-[#13ec6d] animate-bounce" style={{ animationDelay: '0ms' }} />
-                                        <span className="h-2 w-2 rounded-full bg-[#13ec6d] animate-bounce" style={{ animationDelay: '150ms' }} />
-                                        <span className="h-2 w-2 rounded-full bg-[#13ec6d] animate-bounce" style={{ animationDelay: '300ms' }} />
+                            {isLoading && (
+                                <div className="flex gap-3 sm:gap-4 items-start">
+                                    <div className="flex-shrink-0 h-8 w-8 rounded-full bg-slate-800 text-white flex items-center justify-center font-bold text-xs mt-1 animate-pulse">
+                                        L
                                     </div>
-                                    <span className="text-xs text-slate-400 font-medium ml-2">
-                                        Consulting Gemini 2.5 Flash & analyzing strategy...
-                                    </span>
+                                    <div className="bg-white dark:bg-[#121a2a] border border-slate-200 dark:border-white/10 rounded-2xl px-5 py-4 shadow-sm">
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="h-2 w-2 rounded-full bg-[#13ec6d] animate-bounce" style={{ animationDelay: '0ms' }} />
+                                                <span className="h-2 w-2 rounded-full bg-[#13ec6d] animate-bounce" style={{ animationDelay: '150ms' }} />
+                                                <span className="h-2 w-2 rounded-full bg-[#13ec6d] animate-bounce" style={{ animationDelay: '300ms' }} />
+                                            </div>
+                                        </div>
+                                        {typingSlow && (
+                                            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-2">
+                                                Still thinking…
+                                            </p>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
-                    )}
+                            )}
 
-                    <div ref={messagesEndRef} />
-                </div>
-
-                {/* Suggested Questions Section */}
-                {messages.length <= 3 && (
-                    <div className="px-4 sm:px-6 pt-2 pb-3 border-t border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-black/20">
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
-                            <Sparkles size={12} className="text-[#13ec6d]" /> Suggested Questions
-                        </p>
-                        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-                            {SUGGESTED_QUESTIONS.map((item, idx) => (
-                                <button
-                                    key={idx}
-                                    onClick={() => handleSendMessage(item.query)}
-                                    disabled={isLoading}
-                                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap bg-white dark:bg-[#1a2333] hover:bg-slate-100 dark:hover:bg-[#233045] text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-white/10 transition-all shadow-sm hover:border-[#13ec6d]/40 cursor-pointer"
-                                >
-                                    <item.icon size={14} className="text-[#13ec6d]" />
-                                    <span>{item.label}</span>
-                                </button>
-                            ))}
+                            {messages.length <= 1 && (
+                                <div className="flex flex-wrap gap-2 mt-4">
+                                    {getSuggestedQuestions().map(q => (
+                                        <button
+                                            key={q}
+                                            onClick={() => handleSendMessage(q)}
+                                            disabled={isLoading}
+                                            className="text-left px-3 py-2 rounded-xl text-xs font-medium bg-white dark:bg-[#1a2333] hover:bg-slate-100 dark:hover:bg-[#233045] text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-white/10 transition-all shadow-sm cursor-pointer"
+                                        >
+                                            {q}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                            
+                            <div ref={messagesEndRef} />
                         </div>
                     </div>
-                )}
 
-                {/* Input Area */}
-                <div className="p-4 border-t border-slate-200 dark:border-[#1e293b] bg-white dark:bg-[#121a2a]">
-                    <div className="relative flex items-center rounded-xl bg-slate-100 dark:bg-[#0b0f19] border border-slate-200 dark:border-[#1e293b] focus-within:border-[#13ec6d]/50 focus-within:ring-1 focus-within:ring-[#13ec6d]/50 transition-all">
-                        <textarea
-                            ref={inputRef}
-                            value={inputQuery}
-                            onChange={(e) => setInputQuery(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            placeholder="Ask any career question, interview advice, or resume tip... (Press Enter to send)"
-                            rows={1}
-                            disabled={isLoading}
-                            className="w-full resize-none bg-transparent px-4 py-3.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none max-h-32 min-h-[48px]"
-                        />
-                        <div className="flex items-center pr-3 gap-2">
-                            <button
-                                onClick={() => handleSendMessage()}
-                                disabled={!inputQuery.trim() || isLoading}
-                                className={`flex h-9 w-9 items-center justify-center rounded-lg font-bold transition-all cursor-pointer ${
-                                    inputQuery.trim() && !isLoading
-                                        ? 'bg-[#13ec6d] text-[#0b0f19] hover:bg-[#13ec6d]/90 shadow-[0_0_10px_rgba(19,236,109,0.3)]'
-                                        : 'bg-slate-300 dark:bg-white/5 text-slate-500 cursor-not-allowed'
-                                }`}
-                                title="Send question"
+                    {/* Input Area */}
+                    <div className="shrink-0 p-4 border-t border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-[#0b0f19]">
+                        <div className="max-w-5xl mx-auto w-full">
+                            {!isLoading && (
+                                <div className="flex flex-wrap gap-2 mb-3">
+                                    {QUICK_ACTIONS.map(a => (
+                                        <button 
+                                            key={a.label} 
+                                            onClick={() => handleSendMessage(a.query)} 
+                                            className="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs hover:bg-slate-200 dark:hover:bg-slate-800 cursor-pointer text-slate-700 dark:text-slate-300 transition-colors"
+                                        >
+                                            {a.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+
+                            <div className="relative flex items-center rounded-xl bg-white dark:bg-[#121a2a] border border-slate-200 dark:border-white/10 p-1 focus-within:border-[#13ec6d]/50 focus-within:ring-1 focus-within:ring-[#13ec6d]/50 transition-all">
+                                <textarea
+                                    ref={inputRef}
+                                    value={inputQuery}
+                                    onChange={(e) => setInputQuery(e.target.value)}
+                                    onKeyDown={handleKeyDown}
+                                    placeholder="Ask about roles, skills, interviews, or your roadmap..."
+                                    rows={1}
+                                    className="w-full resize-none bg-transparent px-3 py-3 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none min-h-[44px] max-h-32"
+                                />
+                                {isLoading ? (
+                                    <button
+                                        type="button"
+                                        onClick={handleStop}
+                                        title="Stop generating"
+                                        aria-label="Stop generating"
+                                        className="flex-shrink-0 h-10 w-10 mr-1 rounded-full flex items-center justify-center bg-[#13ec6d] text-[#0b0f19] hover:bg-[#13ec6d]/90 shadow-md transition-all cursor-pointer"
+                                    >
+                                        <Square size={16} fill="currentColor" />
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={() => handleSendMessage()}
+                                        disabled={!inputQuery.trim()}
+                                        title="Send message"
+                                        aria-label="Send message"
+                                        className={`flex-shrink-0 h-10 w-10 mr-1 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+                                            inputQuery.trim()
+                                                ? 'bg-[#13ec6d] text-[#0b0f19] hover:bg-[#13ec6d]/90 shadow-md'
+                                                : 'bg-slate-200 dark:bg-white/5 text-slate-400 cursor-not-allowed'
+                                        }`}
+                                    >
+                                        <Send size={16} />
+                                    </button>
+                                )}
+                            </div>
+                            
+                            <div className="flex justify-between items-center text-[11px] text-slate-500 dark:text-slate-400 mt-2 px-1">
+                                <span>Enter to send • Shift+Enter for new line</span>
+                                <span>{apiHealth.aiConfigured ? apiHealth.primaryModel : "Offline Engine"}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Profile Sidebar (Right Column, Desktop Only) */}
+                <div className="hidden lg:block lg:col-span-1 min-h-0 overflow-y-auto">
+                    <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#121a2a] p-5 flex flex-col shadow-lg">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Your Profile</h3>
+                            <button 
+                                onClick={fetchContext} 
+                                className="text-[10px] font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 flex items-center gap-1 cursor-pointer transition-colors"
                             >
-                                <Send size={16} />
+                                <RefreshCw size={10} /> Refresh
+                            </button>
+                        </div>
+
+                        <div className="space-y-6">
+                            <div>
+                                <div className="text-[11px] text-slate-500 uppercase font-bold tracking-wider mb-1">Target Role</div>
+                                <div className="text-sm text-slate-900 dark:text-white font-medium">
+                                    {profileContext?.targetRole || <span className="text-slate-400 italic">Not set</span>}
+                                </div>
+                            </div>
+
+                            <div>
+                                <div className="text-[11px] text-slate-500 uppercase font-bold tracking-wider mb-1">Readiness Score</div>
+                                {profileContext?.readinessScore != null ? (
+                                    <div>
+                                        <div className="text-sm text-[#13ec6d] font-bold">{profileContext?.readinessScore ?? 0}%</div>
+                                        <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Based on your saved profile</p>
+                                        <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full mt-1.5 overflow-hidden">
+                                            <div className="h-full bg-[#13ec6d] rounded-full transition-all duration-500" style={{ width: `${profileContext?.readinessScore ?? 0}%` }} />
+                                        </div>
+                                        {(profileContext?.readinessScore ?? 0) < 30 && (
+                                            <p className="text-[11px] text-emerald-600 dark:text-[#13ec6d] mt-1">
+                                                Focus on your top missing skill below to raise this fastest.
+                                            </p>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="text-xs text-slate-400 italic">Score not available</div>
+                                )}
+                            </div>
+
+                            <div>
+                                <div className="text-[11px] text-slate-500 uppercase font-bold tracking-wider mb-2">Matched to Role</div>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {(profileContext?.matchedSkills?.length ?? 0) > 0 ? (profileContext?.matchedSkills ?? []).map(s => (
+                                        <span key={s} className="px-2 py-1 rounded-md text-[10px] font-bold bg-[#13ec6d]/10 text-[#13ec6d] border border-[#13ec6d]/20">
+                                            {s}
+                                        </span>
+                                    )) : <span className="text-xs text-slate-400 italic">No skills yet — add them on Career Simulator</span>}
+                                </div>
+                            </div>
+
+                            {(profileContext?.otherSkills?.length ?? 0) > 0 && (
+                                <div>
+                                    <div className="text-[11px] text-slate-500 uppercase font-bold tracking-wider mb-2">Other Skills</div>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {(profileContext?.otherSkills ?? []).slice(0, 6).map(s => (
+                                            <span key={s} className="px-2 py-1 rounded-md text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                                {s}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div>
+                                <div className="text-[11px] text-slate-500 uppercase font-bold tracking-wider mb-2">Top 3 Missing Skills</div>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {(profileContext?.missingSkills?.length ?? 0) > 0 ? (profileContext?.missingSkills ?? []).slice(0, 3).map(s => (
+                                        <span key={s} className="px-2 py-1 rounded-md text-[10px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                                            {s}
+                                        </span>
+                                    )) : <span className="text-xs text-slate-400 italic">None</span>}
+                                </div>
+                            </div>
+
+                            {profileContext?.nextRoadmapTask && (
+                                <div>
+                                    <div className="text-[11px] text-slate-500 uppercase font-bold tracking-wider mb-1">Next Roadmap Task</div>
+                                    <div className="text-sm text-slate-900 dark:text-slate-300 font-medium">
+                                        <span className="flex items-start gap-2">
+                                            <span className="text-[#13ec6d] mt-0.5">→</span>
+                                            {profileContext.nextRoadmapTask}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="mt-6 pt-6 border-t border-slate-200 dark:border-white/10">
+                            <button
+                                type="button"
+                                onClick={() => navigate('/career')}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#13ec6d]/10 text-emerald-600 dark:text-[#13ec6d] border border-[#13ec6d]/30 hover:bg-[#13ec6d]/20 transition-colors cursor-pointer"
+                            >
+                                Go to Career Simulator →
                             </button>
                         </div>
                     </div>
-                    <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2 px-1">
-                        <span>Press <kbd className="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-white/10 text-[10px] text-slate-600 dark:text-slate-300">Enter</kbd> to send, <kbd className="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-white/10 text-[10px] text-slate-600 dark:text-slate-300">Shift + Enter</kbd> for new line</span>
-                        <span>Primary: Gemini 2.5 Flash • Offline Engine Ready</span>
-                    </div>
                 </div>
+
             </div>
 
             {/* Clear Conversation Confirmation Modal */}
             {showClearConfirm && (
                 <div 
-                    id="clear-conversation-backdrop"
                     className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150"
                     onClick={() => setShowClearConfirm(false)}
                 >
                     <div 
-                        id="clear-conversation-dialog"
                         className="bg-white dark:bg-[#121a2a] border border-slate-200 dark:border-[#1e293b] rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150"
                         onClick={(e) => e.stopPropagation()}
-                        role="dialog"
-                        aria-modal="true"
-                        aria-labelledby="clear-modal-title"
                     >
                         <div className="flex items-start gap-3.5">
                             <div className="flex-shrink-0 h-11 w-11 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center border border-red-500/20 shadow-sm">
                                 <Trash2 size={20} />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <h3 id="clear-modal-title" className="text-base font-bold text-slate-900 dark:text-white">
+                                <h3 className="text-base font-bold text-slate-900 dark:text-white">
                                     Clear Conversation History?
                                 </h3>
                                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -679,7 +944,6 @@ export default function CareerAssistant() {
 
                         <div className="flex items-center justify-end gap-3 pt-2">
                             <button
-                                id="cancel-clear-btn"
                                 type="button"
                                 onClick={() => setShowClearConfirm(false)}
                                 className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer border border-slate-200 dark:border-white/10"
@@ -687,13 +951,12 @@ export default function CareerAssistant() {
                                 Cancel
                             </button>
                             <button
-                                id="confirm-clear-btn"
                                 type="button"
                                 onClick={confirmClearHistory}
                                 className="px-4 py-2 rounded-xl text-xs font-semibold bg-red-600 hover:bg-red-700 text-white shadow-sm transition-colors cursor-pointer flex items-center gap-1.5"
                             >
                                 <Trash2 size={14} />
-                                <span>Yes, Clear Conversation</span>
+                                <span>Yes, Clear Chat</span>
                             </button>
                         </div>
                     </div>

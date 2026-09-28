@@ -1,7 +1,7 @@
 import React from 'react';
 import { formatINR } from '../../core/utils/format';
 
-export default function CareerPathGraph({ transitions = null }) {
+export default function CareerPathGraph({ transitions = null, simulateFutureSkills = true, onToggleSimulateFutureSkills, targetRoleName }) {
     if (!transitions || !transitions.nextRoles || transitions.nextRoles.length === 0) return null;
 
     const difficultyColors = {
@@ -18,8 +18,31 @@ export default function CareerPathGraph({ transitions = null }) {
 
     return (
         <div className="bg-[#121a2a] rounded-2xl p-6 shadow-lg border border-[#1e293b]">
-            <h3 className="text-lg font-bold text-white mb-1">Career Path Graph</h3>
-            <p className="text-slate-400 text-xs mb-6">Where you can go next from {transitions.currentRole}.</p>
+            <div className="flex justify-between items-start mb-6">
+                <div>
+                    <h3 className="text-lg font-bold text-white mb-1">Career Path Graph</h3>
+                    <p className="text-slate-400 text-xs">Where you can go next from {transitions.currentRole}.</p>
+                </div>
+                {onToggleSimulateFutureSkills && (
+                    <div className="flex flex-col items-end gap-1">
+                        <span className="text-[10px] text-slate-500 uppercase font-bold">Simulate As</span>
+                        <div className="flex bg-slate-800 p-0.5 rounded-lg border border-slate-700">
+                            <button 
+                                onClick={() => onToggleSimulateFutureSkills(false)}
+                                className={`text-[10px] px-3 py-1 rounded-md font-medium transition-all ${!simulateFutureSkills ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-400 hover:text-slate-300'}`}
+                            >
+                                Current Skills
+                            </button>
+                            <button 
+                                onClick={() => onToggleSimulateFutureSkills(true)}
+                                className={`text-[10px] px-3 py-1 rounded-md font-medium transition-all ${simulateFutureSkills ? 'bg-[#13ec6d]/20 text-[#13ec6d] shadow-sm' : 'text-slate-400 hover:text-slate-300'}`}
+                            >
+                                After {targetRoleName || 'Target Role'}
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
             <div className="space-y-3">
                 {transitions.nextRoles.map(t => (
                     <div key={t.roleId} className="bg-slate-900/50 rounded-xl p-4 border border-slate-800 hover:border-slate-600 transition-colors">
@@ -49,9 +72,14 @@ export default function CareerPathGraph({ transitions = null }) {
                         </div>
                         {t.needToLearn.length > 0 && (
                             <div className="flex flex-wrap gap-1 mb-2">
-                                {t.needToLearn.map(s => (
+                                {t.needToLearn.slice(0, 4).map(s => (
                                     <span key={s} className="text-[9px] px-1.5 py-0.5 bg-red-900/20 text-red-400 rounded border border-red-900/30 font-medium">{s}</span>
                                 ))}
+                                {t.needToLearn.length > 4 && (
+                                    <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                                        +{t.needToLearn.length - 4} more
+                                    </span>
+                                )}
                             </div>
                         )}
                         <p className="text-[10px] text-slate-500 italic">{t.verdict}</p>

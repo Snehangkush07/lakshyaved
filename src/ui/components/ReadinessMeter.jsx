@@ -1,24 +1,32 @@
 import React from 'react';
 
-export default function ReadinessMeter({ score, breakdown }) {
+export default function ReadinessMeter({ score, breakdown, confidence }) {
     // 0 - 100 score
     const clampedScore = Math.max(0, Math.min(100, Math.round(score)));
 
-    let colorClass = 'bg-red-500 text-red-50 border-red-500/30';
+    const confKey = (confidence || (clampedScore >= 75 ? 'high' : clampedScore >= 50 ? 'medium' : 'low')).toLowerCase();
+
+    const confidenceLabel = {
+        low: 'Early estimate',
+        medium: 'Partial data',
+        high: 'High confidence',
+    }[confKey] || 'Early estimate';
+
+    const confidenceColor = {
+        low: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30',
+        medium: 'bg-slate-500/15 text-slate-600 dark:text-slate-300 border-slate-500/30',
+        high: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
+    }[confKey] || 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30';
+
     let progressClass = 'bg-red-500';
     let textClass = 'text-red-500';
-    let label = 'LOW CONFIDENCE';
 
     if (clampedScore >= 75) {
-        colorClass = 'bg-[#13ec6d]/20 text-[#13ec6d] border-[#13ec6d]/30';
         progressClass = 'bg-[#13ec6d]';
         textClass = 'text-[#13ec6d]';
-        label = 'HIGH CONFIDENCE';
     } else if (clampedScore >= 50) {
-        colorClass = 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30';
         progressClass = 'bg-yellow-500';
         textClass = 'text-yellow-500';
-        label = 'MEDIUM CONFIDENCE';
     }
 
     return (
@@ -26,8 +34,8 @@ export default function ReadinessMeter({ score, breakdown }) {
             <div className="flex justify-between items-end mb-1">
                 <div>
                     <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Readiness Score</h4>
-                    <p className={`text-xs font-bold px-2 py-0.5 rounded-md inline-block border ${colorClass}`}>
-                        {label}
+                    <p className={`text-xs font-bold px-2 py-0.5 rounded-md inline-block border ${confidenceColor}`}>
+                        {confidenceLabel}
                     </p>
                 </div>
                 <div className="text-right">

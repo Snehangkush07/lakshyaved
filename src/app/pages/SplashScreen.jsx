@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Hexagon } from 'lucide-react';
+import LakshyavedLogo from '../../ui/components/LakshyavedLogo';
 
 export default function SplashScreen({ onComplete }) {
     const [isFadingOut, setIsFadingOut] = useState(false);
@@ -29,19 +29,17 @@ export default function SplashScreen({ onComplete }) {
         >
             <div className="relative flex flex-col items-center">
                 {/* Glowing background effect */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-[#13ec6d] rounded-full blur-[60px] opacity-20 animate-pulse"></div>
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-[#10b981] rounded-full blur-[80px] opacity-25 animate-pulse"></div>
                 
-                {/* Logo Icon */}
-                <div className="relative text-[#13ec6d] mb-6 animate-bounce" style={{ animationDuration: '2s' }}>
-                    <Hexagon size={80} fill="currentColor" className="opacity-20 absolute top-0 left-0" />
-                    <Hexagon size={80} className="relative z-10 drop-shadow-[0_0_15px_rgba(19,236,109,0.5)]" />
-                </div>
-                
-                {/* Logo Text */}
-                <div className="overflow-hidden">
-                    <h1 className="text-4xl md:text-5xl font-extrabold tracking-widest text-white animate-fade-up">
-                        LAKSHYA<span className="text-[#13ec6d]">VED</span>
-                    </h1>
+                {/* Logo Icon & Text */}
+                <div className="animate-fade-up">
+                    <LakshyavedLogo 
+                        size={84} 
+                        showText={true} 
+                        showSubtitle={true} 
+                        textClassName="text-4xl md:text-5xl font-black"
+                        className="flex-col text-center" 
+                    />
                 </div>
                 
                 {/* Loading indicator */}

@@ -158,11 +158,11 @@ ${context?.targetRole ? `\n**Your Lakshyaved Context:**
 `;
 }
 
-// Models in order of capability & availability (gemini-3.8-flash as primary text model)
+// Models in order of capability & availability (gemini-2.5-flash as primary text model)
 const MODEL_FALLBACK_LIST = [
-  "gemini-3.8-flash",
+  "gemini-2.5-flash",
   "gemini-3.1-flash-lite",
-  "gemini-flash-latest",
+  "gemini-flash-lite-latest",
 ];
 
 async function callGeminiWithRetryAndFallback(
@@ -243,7 +243,7 @@ async function startServer() {
     res.json({
       status: "ok",
       aiConfigured: Boolean(process.env.GEMINI_API_KEY),
-      primaryModel: "gemini-3.8-flash",
+      primaryModel: "gemini-2.5-flash",
       fallbackModels: MODEL_FALLBACK_LIST,
     });
   });
@@ -260,6 +260,14 @@ async function startServer() {
 
       let contextPrompt = "";
       if (context) {
+        const resumeText = typeof context?.resumeText === 'string' ? context.resumeText.slice(0, 20000) : '';
+        let resumeSection = '';
+        if (resumeText && resumeText.trim().length > 0) {
+          resumeSection = `\n\nUser's Resume (raw text, may be messy):\n\`\`\`\n${resumeText}\n\`\`\``;
+        } else {
+          resumeSection = `\n\nUser has not uploaded a resume yet. If they ask about resume review, tell them to upload one on the Skill Gap page.`;
+        }
+
         contextPrompt = `
 User Lakshyaved Career Profile Context:
 - Target Role: ${context.targetRole || "Not specified"}
@@ -267,7 +275,9 @@ User Lakshyaved Career Profile Context:
 - Target Missing Skills: ${Array.isArray(context.missingSkills) && context.missingSkills.length > 0 ? context.missingSkills.join(", ") : "None"}
 - Identified Interests: ${Array.isArray(context.interests) && context.interests.length > 0 ? context.interests.join(", ") : "None"}
 - Career Readiness Score: ${context.readinessScore != null ? context.readinessScore + "%" : "Not yet calculated"}
-Please actively utilize this profile context to personalize and tailor your advice when relevant.`;
+Please actively utilize this profile context to personalize and tailor your advice when relevant.${resumeSection}`;
+      } else {
+        contextPrompt = `\n\nUser has not uploaded a resume yet. If they ask about resume review, tell them to upload one on the Skill Gap page.`;
       }
 
       const systemInstruction = `You are the Lakshyaved Career AI Assistant & Mentor.

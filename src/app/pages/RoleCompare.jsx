@@ -23,14 +23,15 @@ const calcSalaryProjection = (role) => {
 };
 
 const calcOverlap = (role, profileSkills = []) => {
-    if (!role) return { matched: [], missing: [], score: 0 };
+    if (!role) return { matched: [], missing: [], score: 0, percent: 0 };
     const req = role.requiredSkills.map(s => s.toLowerCase());
     const user = profileSkills.map(s => s.toLowerCase());
 
     const matched = role.requiredSkills.filter(s => user.includes(s.toLowerCase()));
     const missing = role.requiredSkills.filter(s => !user.includes(s.toLowerCase()));
     const score = req.length ? Math.round((matched.length / req.length) * 70) : 0;
-    return { matched, missing, score };
+    const percent = req.length ? Math.round((matched.length / req.length) * 100) : 0;
+    return { matched, missing, score, percent };
 };
 
 export default function RoleCompare() {
@@ -61,6 +62,24 @@ export default function RoleCompare() {
 
     const overlapA = useMemo(() => calcOverlap(roleA, profile.skills), [roleA, profile.skills]);
     const overlapB = useMemo(() => calcOverlap(roleB, profile.skills), [roleB, profile.skills]);
+
+    const sharedSkills = useMemo(() => {
+        if (!roleA || !roleB) return [];
+        const aSkills = roleA.requiredSkills.map(s => s.toLowerCase());
+        return roleB.requiredSkills.filter(s => aSkills.includes(s.toLowerCase()));
+    }, [roleA, roleB]);
+
+    const uniqueToA = useMemo(() => {
+        if (!roleA || !roleB) return [];
+        const bSkills = roleB.requiredSkills.map(s => s.toLowerCase());
+        return roleA.requiredSkills.filter(s => !bSkills.includes(s.toLowerCase()));
+    }, [roleA, roleB]);
+
+    const uniqueToB = useMemo(() => {
+        if (!roleA || !roleB) return [];
+        const aSkills = roleA.requiredSkills.map(s => s.toLowerCase());
+        return roleB.requiredSkills.filter(s => !aSkills.includes(s.toLowerCase()));
+    }, [roleA, roleB]);
 
     // Recommendation logic
     const recommendation = useMemo(() => {
@@ -139,7 +158,7 @@ export default function RoleCompare() {
                         />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 mb-4 text-sm bg-slate-50 dark:bg-slate-900/50 rounded-xl p-4 border border-slate-200 dark:border-slate-800/50">
+                    <div className="grid grid-cols-3 gap-4 mb-4 text-sm bg-slate-50 dark:bg-slate-900/50 rounded-xl p-4 border border-slate-200 dark:border-slate-800/50">
                         <div>
                             <span className="text-slate-500 block text-xs">Base Salary</span>
                             <span className="font-bold text-slate-900 dark:text-white">{roleA ? formatINR(roleA.baseSalaryINR || 0) : '-'}</span>
@@ -147,6 +166,10 @@ export default function RoleCompare() {
                         <div>
                             <span className="text-slate-500 block text-xs">Growth (YoY)</span>
                             <span className="font-bold text-emerald-600 dark:text-[#13ec6d]">+{roleA ? Math.round(roleA.growthRate * 100) : 0}%</span>
+                        </div>
+                        <div>
+                            <span className="text-slate-500 block text-xs">Skill Overlap</span>
+                            <span className="font-bold text-emerald-600 dark:text-[#13ec6d]">{roleA ? `${overlapA.percent}%` : '-'}</span>
                         </div>
                     </div>
 
@@ -168,7 +191,7 @@ export default function RoleCompare() {
                         />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 mb-4 text-sm bg-slate-50 dark:bg-slate-900/50 rounded-xl p-4 border border-slate-200 dark:border-slate-800/50">
+                    <div className="grid grid-cols-3 gap-4 mb-4 text-sm bg-slate-50 dark:bg-slate-900/50 rounded-xl p-4 border border-slate-200 dark:border-slate-800/50">
                         <div>
                             <span className="text-slate-500 block text-xs">Base Salary</span>
                             <span className="font-bold text-slate-900 dark:text-white">{roleB ? formatINR(roleB.baseSalaryINR || 0) : '-'}</span>
@@ -176,6 +199,10 @@ export default function RoleCompare() {
                         <div>
                             <span className="text-slate-500 block text-xs">Growth (YoY)</span>
                             <span className="font-bold text-blue-600 dark:text-blue-400">+{roleB ? Math.round(roleB.growthRate * 100) : 0}%</span>
+                        </div>
+                        <div>
+                            <span className="text-slate-500 block text-xs">Skill Overlap</span>
+                            <span className="font-bold text-blue-600 dark:text-blue-400">{roleB ? `${overlapB.percent}%` : '-'}</span>
                         </div>
                     </div>
 
@@ -199,6 +226,34 @@ export default function RoleCompare() {
             <div className="bg-white dark:bg-[#121a2a] rounded-2xl p-6 shadow-lg border border-slate-200 dark:border-slate-700/50">
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6">5-Year Compensation Trajectory</h3>
                 <LineChartMini data1={projA} data2={projB} color1="#13ec6d" color2="#3b82f6" height={220} />
+            </div>
+
+            {/* Shared & Unique Skills */}
+            <div className="bg-white dark:bg-[#121a2a] rounded-2xl p-6 shadow-lg border border-slate-200 dark:border-slate-700/50">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6">Shared & Unique Skills</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <h4 className="text-sm font-bold text-emerald-600 dark:text-[#13ec6d] mb-4">Unique to {roleA?.roleName || 'Role A'}</h4>
+                        <div className="flex flex-wrap gap-1.5">
+                            {uniqueToA.map(s => <SkillChip key={s} label={s} type="missing" />)}
+                            {uniqueToA.length === 0 && <span className="text-slate-500 text-sm">None</span>}
+                        </div>
+                    </div>
+                    <div>
+                        <h4 className="text-sm font-bold text-purple-600 dark:text-purple-400 mb-4">Shared Skills (Learn Once!)</h4>
+                        <div className="flex flex-wrap gap-1.5">
+                            {sharedSkills.map(s => <SkillChip key={s} label={s} type="matched" />)}
+                            {sharedSkills.length === 0 && <span className="text-slate-500 text-sm">None</span>}
+                        </div>
+                    </div>
+                    <div>
+                        <h4 className="text-sm font-bold text-blue-600 dark:text-blue-400 mb-4">Unique to {roleB?.roleName || 'Role B'}</h4>
+                        <div className="flex flex-wrap gap-1.5">
+                            {uniqueToB.map(s => <SkillChip key={s} label={s} type="missing" />)}
+                            {uniqueToB.length === 0 && <span className="text-slate-500 text-sm">None</span>}
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {/* Skills Compare */}

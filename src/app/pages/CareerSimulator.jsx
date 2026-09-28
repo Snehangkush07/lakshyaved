@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Play, RotateCcw } from 'lucide-react';
+import { Play, RotateCcw, Sparkles } from 'lucide-react';
 import ChipInput from '../../ui/components/ChipInput';
 import StatCard from '../../ui/components/StatCard';
 
@@ -19,12 +19,13 @@ import RoleAutocomplete from '../../ui/components/RoleAutocomplete';
 import WhatIfScenarios from '../../ui/components/WhatIfScenarios';
 import RecommendationList from '../../ui/components/RecommendationList';
 import CareerPathGraph from '../../ui/components/CareerPathGraph';
+import SalaryProjectionChart from '../../ui/components/SalaryProjectionChart';
 
 const rolesDataset = getAllRoles();
 
 export default function CareerSimulator() {
-    const [skills, setSkills] = useState(['Python', 'React']);
-    const [interests, setInterests] = useState(['Leadership']);
+    const [skills, setSkills] = useState([]);
+    const [interests, setInterests] = useState([]);
     const [targetRole, setTargetRole] = useState(rolesDataset[0]?.roleId || '');
     const [results, setResults] = useState(null);
     const [errorStatus, setErrorStatus] = useState('');
@@ -32,6 +33,7 @@ export default function CareerSimulator() {
 
     const [skillSuggestions, setSkillSuggestions] = useState([]);
     const [skillError, setSkillError] = useState('');
+    const [simulateFutureSkills, setSimulateFutureSkills] = useState(true);
 
     const handleSkillQueryChange = (q) => {
         if (q) {
@@ -188,13 +190,15 @@ export default function CareerSimulator() {
     }, [results, targetRole, skills, interests, resumeSections, missingSkills, readiness]);
 
     const transitions = useMemo(() => {
-        return results && targetRole ? analyzeTransitions({ 
-            targetRole, 
-            rolesDataset, 
-            profileSkills: skills, 
-            skillsWithLevels: [] 
-        }) : null;
-    }, [results, targetRole, skills]);
+        if (!targetRole || !results) return null;
+        return analyzeTransitions({
+            targetRole,
+            rolesDataset,
+            profileSkills: skills,
+            skillsWithLevels: skills.map(s => ({ name: s, level: 'intermediate' })),
+            simulateFutureSkills,
+        });
+    }, [targetRole, skills, results, simulateFutureSkills]);
 
     return (
         <div className="space-y-6 max-w-7xl mx-auto">
@@ -258,6 +262,21 @@ export default function CareerSimulator() {
                             emptyText="No interests found"
                         />
 
+                        <div className="flex justify-end">
+                            <button
+                                onClick={() => {
+                                    setSkills(['JavaScript', 'React', 'Node.js', 'SQL', 'Git', 'REST APIs']);
+                                    setInterests(['Web Development', 'System Design']);
+                                    const swEng = rolesDataset.find(r => r.roleId === 'software-engineer');
+                                    if (swEng) setTargetRole(swEng.roleId);
+                                }}
+                                className="text-[11px] text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 flex items-center gap-1.5 px-2.5 py-1.5 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 rounded-md transition-all cursor-pointer"
+                            >
+                                <Sparkles size={12} />
+                                Load a sample profile
+                            </button>
+                        </div>
+
                         {errorStatus && (
                             <div className="p-3 bg-red-900/50 text-red-200 border border-red-800 rounded-lg text-sm font-medium">
                                 {errorStatus}
@@ -301,24 +320,50 @@ export default function CareerSimulator() {
 
                                     <div className="grid grid-cols-1 gap-4 w-full">
                                         <StatCard title="Target Year" value="Year 5" />
-                                        <StatCard
-                                            title="Est. Salary"
-                                            value={results.projection.length ? formatINR(results.projection[4].salaryINR) : 'N/A'}
-                                            trend={results.explain ? `+${results.explain.effectiveGrowthPercent}% /yr` : ''}
-                                            trendUp={true}
-                                        />
+                                        {skills.length > 0 && (results.explain?.skillMatchPercent || 0) > 0 ? (
+                                            <div className="flex flex-col">
+                                                <StatCard
+                                                    title="Est. Salary"
+                                                    value={results.projection.length ? formatINR(results.projection[4].salaryINR) : 'N/A'}
+                                                    trend={results.explain ? `+${results.explain.effectiveGrowthPercent}% /yr` : ''}
+                                                    trendUp={true}
+                                                />
+                                                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Estimate · not sourced market data</p>
+                                            </div>
+                                        ) : (
+                                            <StatCard
+                                                title="Est. Salary"
+                                                value="—"
+                                                subtitle="Add skills to project salary"
+                                            />
+                                        )}
                                     </div>
                                 </div>
 
                                 <p className="text-xs text-slate-500 leading-relaxed border-t border-slate-100 dark:border-slate-800 pt-4">
-                                    {results.explain ? (
-                                        <>Based on your profile, you are projected to reach <strong className="text-slate-300">{results.projection[4]?.title}</strong> level smoothly with a {results.explain.effectiveGrowthPercent}% YoY compounding growth rate.</>
-                                    ) : 'Data loaded successfully.'}
+                                    {skills.length > 0 && (results.explain?.skillMatchPercent || 0) > 0 ? (
+                                        results.explain ? (
+                                            <>Based on your profile, you are projected to reach <strong className="text-slate-300">{results.projection[4]?.title}</strong> level smoothly with a {results.explain.effectiveGrowthPercent}% YoY compounding growth rate.</>
+                                        ) : 'Data loaded successfully.'
+                                    ) : (
+                                        'Add your current skills in the parameters panel to calculate a realistic salary and career projection.'
+                                    )}
                                 </p>
 
                                 {readiness && (
                                     <div className="mt-6 pt-6 border-t border-slate-700/50">
                                         <ReadinessMeter score={readiness.total} breakdown={readiness.breakdown} />
+                                        <p className="text-[11px] text-slate-400 mt-2 px-1 leading-relaxed">
+                                            {!resumeData?.rawText ? (
+                                                <>
+                                                    <span className="text-[#13ec6d] font-semibold">Why this score?</span> Skill match is only 35 of the 100 readiness points. Uploading a resume unlocks 45 points from experience, completeness, and portfolio signals.
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <span className="text-[#13ec6d] font-semibold">6-Factor Score:</span> Evaluates Skill Match (35 pts), Resume & Experience (45 pts), Education & Interests (20 pts).
+                                                </>
+                                            )}
+                                        </p>
                                     </div>
                                 )}
                             </>
@@ -343,13 +388,17 @@ export default function CareerSimulator() {
                             <h3 className="text-lg font-bold text-slate-900 dark:text-white">5-Year Roadmap</h3>
                         </div>
 
+                        {results && results.projection && results.projection.length >= 2 && (
+                            <SalaryProjectionChart projection={results.projection} />
+                        )}
+
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="bg-slate-50 dark:bg-[#151e2e] text-xs font-semibold text-slate-500 uppercase tracking-wider">
                                         <th className="px-6 py-4">Year</th>
                                         <th className="px-6 py-4">Projected Role</th>
-                                        <th className="px-6 py-4 text-right">Compensation</th>
+                                        <th className="px-6 py-4 text-right">COMPENSATION (ESTIMATE)</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -383,20 +432,25 @@ export default function CareerSimulator() {
 
                 {/* Career Path Graph */}
                 {results && targetRole && (
-                    <CareerPathGraph transitions={transitions} />
-                )}
-
-                {/* Roadmap Planner */}
-                {results && targetRole && (
-                    <div className="pt-4 mt-8 border-t border-[#1e293b]">
-                        <RoadmapPlanner
-                            targetRole={targetRole}
-                            targetRoleName={role?.roleName}
-                            missingSkills={missingSkills}
-                        />
-                    </div>
+                    <CareerPathGraph 
+                        transitions={transitions} 
+                        simulateFutureSkills={simulateFutureSkills}
+                        onToggleSimulateFutureSkills={setSimulateFutureSkills}
+                        targetRoleName={role?.roleName}
+                    />
                 )}
             </div>
+
+            {/* Roadmap Planner */}
+            {results && targetRole && (
+                <div className="w-full mt-8">
+                    <RoadmapPlanner
+                        targetRole={targetRole}
+                        targetRoleName={role?.roleName}
+                        missingSkills={missingSkills}
+                    />
+                </div>
+            )}
         </div>
     );
 }

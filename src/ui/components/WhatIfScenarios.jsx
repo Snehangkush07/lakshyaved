@@ -36,7 +36,7 @@ export default function WhatIfScenarios({ scenarios = [] }) {
                                 </div>
                             )}
                             <div className="flex justify-between">
-                                <span className="text-slate-500">Timeline</span>
+                                <span className="text-slate-500">Timeline: </span>
                                 <span className="text-slate-300 font-medium">{s.timeline}</span>
                             </div>
                         </div>

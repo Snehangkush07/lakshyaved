@@ -1,16 +1,15 @@
 import { Link } from 'react-router-dom';
-import { Hexagon, Home } from 'lucide-react';
+import { Home } from 'lucide-react';
+import LakshyavedLogo from '../../ui/components/LakshyavedLogo';
 
 export default function NotFound() {
     return (
         <div className="flex items-center justify-center min-h-[70vh] p-6">
             <div className="text-center max-w-md">
-                <div className="relative inline-block mb-8">
-                    <Hexagon size={80} className="text-slate-800" />
-                    <span className="absolute inset-0 flex items-center justify-center text-3xl font-extrabold text-slate-500">
-                        404
-                    </span>
+                <div className="inline-block mb-6">
+                    <LakshyavedLogo size={64} showText={true} showSubtitle={true} textClassName="text-2xl font-bold" className="flex-col" />
                 </div>
+                <div className="text-4xl font-extrabold text-[#10b981] my-2">404</div>
                 <h1 className="text-3xl font-bold text-white mb-3 tracking-tight">Page Not Found</h1>
                 <p className="text-slate-400 text-sm mb-8 leading-relaxed">
                     The page you're looking for doesn't exist or has been moved.

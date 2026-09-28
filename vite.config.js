@@ -4,15 +4,15 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
   server: {
-    host: '0.0.0.0',
-    port: 3000,
+    host: 'localhost',
+    port: 8000,
     allowedHosts: 'all',
   },
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg'],
+      includeAssets: ['logo.svg'],
       manifest: {
         name: "LAKSHYAVED",
         short_name: "Lakshyaved",
@@ -23,14 +23,14 @@ export default defineConfig({
         start_url: "/",
         icons: [
           {
-            src: '/pwa-192x192.png',
+            src: '/logo.svg',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/svg+xml'
           },
           {
-            src: '/pwa-512x512.png',
+            src: '/logo.svg',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/svg+xml'
           }
         ]
       },

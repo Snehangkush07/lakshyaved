@@ -1,7 +1,7 @@
 import { extractSkillsFromText } from '../parsing/resumeParser';
 
-export function analyzeSkillGap({ resumeText, targetRoleId, rolesDataset }) {
-    if (!resumeText) throw new Error("Resume text is empty");
+export function analyzeSkillGap({ resumeText, targetRoleId, rolesDataset, confirmedSkills }) {
+    if (!resumeText && !confirmedSkills) throw new Error("Resume text or confirmed skills are required");
     if (!targetRoleId) throw new Error("Target role is required");
     if (!rolesDataset) throw new Error("Roles dataset is missing");
 
@@ -9,7 +9,7 @@ export function analyzeSkillGap({ resumeText, targetRoleId, rolesDataset }) {
     if (!role) throw new Error("Role not found");
 
     const requiredSkills = role.requiredSkills || [];
-    const extractedSkills = extractSkillsFromText(resumeText, rolesDataset);
+    const extractedSkills = confirmedSkills || extractSkillsFromText(resumeText, rolesDataset);
 
     // Make case-insensitive match maps
     const extractedMap = new Set(extractedSkills.map(s => s.toLowerCase()));
